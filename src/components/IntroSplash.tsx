@@ -67,7 +67,7 @@ export default function IntroSplash({ onDone }: Props) {
           onClick={onDone}
           className="mt-8 w-full rounded-full bg-emerald-400 px-6 py-4 text-base font-medium text-emerald-950 shadow-[0_0_40px_-4px_rgba(52,211,153,0.8)] transition-transform active:scale-[0.99]"
         >
-          Tune my aura →
+          Choose your energy →
         </button>
         <p className="mt-4 text-center text-xs text-emerald-100/30">
           Your location is only ever shared while your light is on.

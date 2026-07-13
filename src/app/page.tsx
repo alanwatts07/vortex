@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Radar, { type Blip } from "@/components/Radar";
 import VortexSwitch from "@/components/VortexSwitch";
-import AuraPicker from "@/components/AuraPicker";
+import AuraField from "@/components/AuraField";
 import IntroSplash from "@/components/IntroSplash";
 import ShapeGlyph from "@/components/ShapeGlyph";
 import { usePresence } from "@/hooks/usePresence";
@@ -198,13 +198,7 @@ export default function Home() {
     return <IntroSplash onDone={dismissIntro} />;
   }
   if (aura === null || editingAura) {
-    return (
-      <AuraPicker
-        initialColor={aura ?? DEFAULT_CHAKRA}
-        initialShape={shape}
-        onDone={saveIdentity}
-      />
-    );
+    return <AuraField onDone={saveIdentity} />;
   }
 
   const myChakra = CHAKRAS[aura];

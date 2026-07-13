@@ -68,6 +68,60 @@ the "you gotta actually meet" ethos.
 eases safety, and makes the color mechanic land. Global/ambient discovery is a
 *later* expansion, not the launch.
 
+### Open question — how "native" does it need to be?
+
+The deciding question (worth thinking about early, it shapes a lot):
+
+> **Do you need to appear on the radar *without holding the app open*, and get
+> *pinged* when someone's near?**
+
+- **No** (event-mode: you're there, you open it on purpose) → a **PWA**
+  ("Add to Home Screen") is plenty — installs like an app, no store needed,
+  ~an afternoon of work.
+- **Yes** (always-on ambient presence) → you need a real app: **wrap the current
+  web code with Capacitor** (~a few days, reuses ~everything, ships to both
+  stores, unlocks background location + push), or fully rebuild in **Expo /
+  React Native** (weeks) only if native presence becomes the whole point.
+
+Short version: PWA now → Capacitor when we want store presence + notifications →
+full native rebuild only if "be a dot while it's in your pocket" is core.
+
+---
+
+## Adoption & onboarding — ideas
+
+### First beachhead: karaoke nights 🎤
+
+The single best launch environment we have — a recurring event the host already
+runs. It hands us, for free, everything cold-start usually costs a fortune:
+
+- **A crowd already there, together, on their phones** — instant density.
+- **A host with a mic** — can literally tell the whole room "flip your light on
+  and pick your color," making everyone go live *at the same moment*. That
+  synchronized flip-on is what makes the radar feel alive instead of empty.
+- **It repeats weekly** — a real, recurring feedback loop with real humans. See
+  what lands, tweak, run it again next week.
+- **Low-stakes, social by default** — a karaoke bar is already about being a
+  little brave and social, so "go find the purple triangle" fits right in.
+
+Ways to make it land at the night:
+- **QR to join the night's vortex** — on the karaoke screen between songs, on
+  tables, on a flyer. One scan → you're on the radar.
+- **Host-driven "everyone on!" moment** — the mic triggers the mass flip-on.
+- **Color as the night's icebreaker** — "there's an orange star who wants to
+  duet — go find them." Optionally give auras a meaning for the night
+  (e.g. down-to-duet vs. just vibing).
+- **Keep join → pick color/shape → on to a few seconds** — in a bar, any
+  friction kills it. No account, works on any phone from the link/QR.
+
+### The growth loop
+
+Nail one recurring night → you've got a **repeatable playbook**: take the same
+"host owns the room" motion to the next bar, the next event, the next scene.
+Adoption is **venue-by-venue and host-led**, not a global launch. Vortex goes
+from "someday, everyone" to "this Thursday, this room" — and that's a path you
+can actually walk.
+
 ---
 
 ## Status — done

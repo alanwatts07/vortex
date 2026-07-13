@@ -124,6 +124,48 @@ can actually walk.
 
 ---
 
+## Background presence — locked phones (wrap native, later)
+
+**The requirement.** For a real venue (bar, karaoke), being a dot *cannot*
+require holding the app open. People lock their phones and talk, sing, get a
+drink — they need to **stay present and approachable in the background** so
+others can still walk up and ask "are you purple?". If everyone has to keep the
+app open to appear, it just won't work in practice. Foreground-only is fine for a
+first test; it's a dealbreaker for real use.
+
+**Why NOT do it now — keep it a web app while we build.** As long as it's a
+website, she (and anyone) can open the live URL, test it, and see **every update
+the moment we ship** — no installs, no app store, no builds to pass around. That
+fast feedback loop is worth a lot right now. Wrapping it native would break that.
+So the rule for this phase: **stay web-first; wrap later.**
+
+**The plan: web now → Capacitor wrap when we need background.**
+Capacitor loads our *existing* web app inside a native shell, which means:
+- We reuse ~100% of what's already built (radar, aura field, presence, etc.).
+- The **same codebase** keeps serving the live URL for testing/sharing *and*
+  powers the wrapped native app — we don't fork or rebuild from scratch.
+- Nothing we build now is wasted; native capability is added only at the wrap
+  step.
+
+**How the background part should work (remember this):**
+- Use **geofence / region monitoring + a heartbeat**, *not* always-on GPS.
+  Inside a venue we mostly need "still here," not meter-by-meter tracking — far
+  kinder on battery and far easier to get past App Store review. ("Always"
+  continuous location gets heavy scrutiny; geofencing/region is the friendly path.)
+- Likely pieces at wrap time: Capacitor + a background-geolocation/geofence
+  plugin, local notifications ("someone nearby just went live"), and a
+  last-known position pinned while the phone is locked.
+- **Auto-expire is mandatory** (ties to the ephemeral principle): your light
+  turns off automatically on geofence exit or after N hours, so nobody becomes a
+  permanent ghost dot they forgot they left on.
+
+**Sequence:** foreground web/PWA to prove the fun (karaoke v1) → **Capacitor wrap
+for background presence** when it goes real. The background work is a known,
+scoped chunk (geofence + heartbeat + auto-expire), not a research project — so
+it's safe to defer without painting ourselves into a corner.
+
+---
+
 ## Status — done
 
 - [x] Radar UI (canvas: sweep, rings, blips flare on pass, your center dot)

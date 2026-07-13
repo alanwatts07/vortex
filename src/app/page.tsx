@@ -1,65 +1,301 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import Radar, { type Blip } from "@/components/Radar";
+import VortexSwitch from "@/components/VortexSwitch";
+import AuraPicker from "@/components/AuraPicker";
+import IntroSplash from "@/components/IntroSplash";
+import ShapeGlyph from "@/components/ShapeGlyph";
+import { usePresence } from "@/hooks/usePresence";
+import { isPresenceConfigured } from "@/lib/supabase";
+import type { Coords } from "@/lib/geo";
+import {
+  CHAKRAS,
+  CHAKRA_ORDER,
+  chakraRgb,
+  DEFAULT_CHAKRA,
+  SHAPES,
+  DEFAULT_SHAPE,
+  isShape,
+  type ChakraId,
+  type DotShape,
+} from "@/lib/chakra";
+
+type GeoState = "idle" | "asking" | "granted" | "denied" | "unsupported";
+
+const AURA_KEY = "vortex.aura";
+const SHAPE_KEY = "vortex.shape";
+const INTRO_KEY = "vortex.seenIntro";
+
+// Deterministic drifting blips for demo mode — a mix of colors and shapes.
+function makeBlips(n: number): Blip[] {
+  const out: Blip[] = [];
+  let seed = 1337;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+  for (let i = 0; i < n; i++) {
+    const chakra = CHAKRAS[CHAKRA_ORDER[i % CHAKRA_ORDER.length]];
+    out.push({
+      angle: rand() * Math.PI * 2,
+      dist: 0.25 + rand() * 0.7,
+      drift: (rand() - 0.5) * 0.15,
+      color: chakra.rgb,
+      shape: SHAPES[i % SHAPES.length],
+    });
+  }
+  return out;
+}
 
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+  const [ready, setReady] = useState(false);
+  const [aura, setAura] = useState<ChakraId | null>(null);
+  const [shape, setShape] = useState<DotShape>(DEFAULT_SHAPE);
+  const [editingAura, setEditingAura] = useState(false);
+  const [seenIntro, setSeenIntro] = useState(false);
+  const [reopenIntro, setReopenIntro] = useState(false);
+
+  const [on, setOn] = useState(false);
+  const [geo, setGeo] = useState<GeoState>("idle");
+  const [coords, setCoords] = useState<Coords | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const startedAt = useRef<number | null>(null);
+  const watchId = useRef<number | null>(null);
+
+  const accent = chakraRgb(aura);
+  const demoBlips = useMemo(() => makeBlips(7), []);
+  const { blips: realBlips, peerCount } = usePresence(
+    on,
+    coords,
+    aura ?? DEFAULT_CHAKRA,
+    shape,
+  );
+
+  const blips = realBlips ?? (on ? demoBlips : []);
+  const nearbyCount = realBlips ? peerCount : on ? demoBlips.length : 0;
+
+  // load saved aura + intro flag once, after hydration (mount-time read is intentional)
+  useEffect(() => {
+    let savedAura: string | null = null;
+    let savedShape: string | null = null;
+    let intro: string | null = null;
+    try {
+      savedAura = localStorage.getItem(AURA_KEY);
+      savedShape = localStorage.getItem(SHAPE_KEY);
+      intro = localStorage.getItem(INTRO_KEY);
+    } catch {
+      // ignore storage errors (private mode, etc.)
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (savedAura && savedAura in CHAKRAS) setAura(savedAura as ChakraId);
+    if (isShape(savedShape)) setShape(savedShape);
+    if (intro === "1") setSeenIntro(true);
+    setReady(true);
+  }, []);
+
+  const dismissIntro = () => {
+    setSeenIntro(true);
+    setReopenIntro(false);
+    try {
+      localStorage.setItem(INTRO_KEY, "1");
+    } catch {
+      // ignore
+    }
+  };
+
+  const saveIdentity = ({
+    color,
+    shape: nextShape,
+  }: {
+    color: ChakraId;
+    shape: DotShape;
+  }) => {
+    setAura(color);
+    setShape(nextShape);
+    setEditingAura(false);
+    try {
+      localStorage.setItem(AURA_KEY, color);
+      localStorage.setItem(SHAPE_KEY, nextShape);
+    } catch {
+      // ignore
+    }
+  };
+
+  // live timer while on
+  useEffect(() => {
+    if (!on) {
+      startedAt.current = null;
+      return;
+    }
+    startedAt.current = Date.now();
+    const t = setInterval(() => {
+      if (startedAt.current) {
+        setElapsed(Math.floor((Date.now() - startedAt.current) / 1000));
+      }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [on]);
+
+  const startWatch = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeo("unsupported");
+      return;
+    }
+    setGeo("asking");
+    watchId.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        setGeo("granted");
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => setGeo("denied"),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 },
+    );
+  };
+
+  const stopWatch = () => {
+    if (watchId.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
+    setCoords(null);
+  };
+
+  const toggle = (next: boolean) => {
+    if (next) {
+      setElapsed(0);
+      startWatch();
+    } else {
+      stopWatch();
+    }
+    setOn(next);
+  };
+
+  const mmss = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(
+    elapsed % 60,
+  ).padStart(2, "0")}`;
+
+  const geoLabel =
+    geo === "granted"
+      ? "located"
+      : geo === "asking"
+        ? "locating…"
+        : geo === "denied"
+          ? "no location"
+          : geo === "unsupported"
+            ? "geo n/a"
+            : "";
+
+  // gate: onboarding until an aura is chosen (or when re-tuning)
+  if (!ready) {
+    return (
+      <main className="flex flex-1 items-center justify-center">
+        <span className="h-3 w-3 animate-ping rounded-full bg-emerald-400/70" />
       </main>
-    </div>
+    );
+  }
+  if (reopenIntro || (!seenIntro && aura === null)) {
+    return <IntroSplash onDone={dismissIntro} />;
+  }
+  if (aura === null || editingAura) {
+    return (
+      <AuraPicker
+        initialColor={aura ?? DEFAULT_CHAKRA}
+        initialShape={shape}
+        onDone={saveIdentity}
+      />
+    );
+  }
+
+  const myChakra = CHAKRAS[aura];
+
+  return (
+    <main className="relative flex min-h-full flex-1 flex-col items-center justify-between overflow-hidden px-6 py-10">
+      {/* ambient background glow, tinted to your aura */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background: `radial-gradient(60% 50% at 50% 42%, rgba(${accent},${
+            on ? 0.16 : 0.04
+          }), transparent 70%)`,
+          transition: "background 600ms ease",
+        }}
+      />
+
+      {/* header */}
+      <header className="flex flex-col items-center gap-2 text-center">
+        <div className="flex items-center gap-2">
+          <span
+            className="h-2.5 w-2.5 rounded-full transition-all"
+            style={{
+              background: `rgb(${accent})`,
+              boxShadow: on ? `0 0 12px 2px rgba(${accent},0.9)` : "none",
+              opacity: on ? 1 : 0.5,
+            }}
+          />
+          <h1 className="text-lg font-semibold tracking-tight">vortex</h1>
+          <button
+            type="button"
+            onClick={() => setReopenIntro(true)}
+            aria-label="How vortex works"
+            className="ml-1 flex h-5 w-5 items-center justify-center rounded-full border border-white/15 text-[11px] text-emerald-100/50 transition-colors hover:border-white/35 hover:text-emerald-100/80"
+          >
+            ?
+          </button>
+        </div>
+        <p className="max-w-xs text-sm text-emerald-100/50">
+          Flip your light on to appear on the radar. A quiet signal that
+          you&rsquo;re open to connect — right here, right now.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => setEditingAura(true)}
+          className="mt-1 flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1 text-xs text-emerald-100/60 transition-colors hover:border-white/25"
+        >
+          <ShapeGlyph shape={shape} rgb={accent} size={14} />
+          {myChakra.name} {shape} · retune
+        </button>
+
+        {!isPresenceConfigured && (
+          <span className="mt-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-0.5 text-[11px] text-amber-200/80">
+            demo mode · nearby dots simulated
+          </span>
+        )}
+      </header>
+
+      {/* radar */}
+      <div className="relative flex w-full max-w-sm flex-1 items-center justify-center py-6">
+        <div className="relative aspect-square w-full max-w-[22rem]">
+          <Radar live={on} blips={blips} accent={accent} shape={shape} />
+        </div>
+      </div>
+
+      {/* status + switch */}
+      <footer className="flex w-full max-w-sm flex-col items-center gap-6">
+        <div className="flex h-10 items-center justify-center text-center text-sm">
+          {on ? (
+            <div className="flex items-center gap-4 font-[family-name:var(--font-geist-mono)] text-emerald-200/70">
+              <span>{nearbyCount} nearby</span>
+              <span className="text-emerald-100/25">•</span>
+              <span>{mmss} live</span>
+              <span className="text-emerald-100/25">•</span>
+              <span>{geoLabel}</span>
+            </div>
+          ) : (
+            <span className="text-emerald-100/35">
+              You&rsquo;re invisible. Flip on when you&rsquo;re open.
+            </span>
+          )}
+        </div>
+
+        <VortexSwitch on={on} onChange={toggle} color={accent} />
+
+        <p className="h-4 text-xs text-emerald-100/30">
+          {on ? "Tap again to go dark" : "No profile. No history. Just presence."}
+        </p>
+      </footer>
+    </main>
   );
 }

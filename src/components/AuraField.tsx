@@ -252,22 +252,13 @@ export default function AuraField({ onDone }: Props) {
             >
               Enter the vortex
             </button>
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={deselect}
-                className="text-xs text-emerald-100/45 transition-colors hover:text-emerald-100/80"
-              >
-                ← choose a different one
-              </button>
-              <button
-                type="button"
-                onClick={stir}
-                className="text-xs text-emerald-100/40 transition-colors hover:text-emerald-100/70"
-              >
-                stir ↻
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={deselect}
+              className="text-xs text-emerald-100/45 transition-colors hover:text-emerald-100/80"
+            >
+              change
+            </button>
           </>
         ) : (
           <>

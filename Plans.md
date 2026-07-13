@@ -24,6 +24,52 @@ other **in person, by color** — no pinging, no texting, no profiles, no accoun
 
 ---
 
+## Strategy — the cold-start problem & event mode
+
+**The existential risk.** A presence app is worthless until enough people are on
+*in the same place at the same time*. Launch it "everywhere" and the failure
+mode is brutal: everyone opens it, sees an empty radar, and leaves. Density —
+not features — is what makes or breaks this. This kills more social apps than
+any bug.
+
+**The unlock: launch as *scenes*, not a global map.** A vortex scoped to a
+specific place or event — a festival, a bar, a campus, a conference — joined via
+a shared code or QR. Everyone there lands on the same radar. Density is
+*manufactured* instead of hoped for. The open-ended global version comes later,
+once the behavior is proven in a bounded crowd.
+
+Why event mode is likely the right *first* shape (it fixes several problems at
+once):
+- **Solves cold-start** — a bounded, co-located crowd guarantees dots to see.
+- **Fits foreground-only web** — at an event you're *there* and you open the
+  app on purpose; no need for background location or a native app yet.
+- **Makes safety tractable** — a scoped crowd (event attendees) is far easier to
+  trust and moderate than "any stranger nearby."
+- **Turns the color into real-world magic** — in a defined space, "are you the
+  purple triangle?" actually resolves. That's the whole thesis, working.
+
+**Make the color exist offline too.** The find-by-color mechanic is the genuinely
+novel thing, so let it leave the screen: pins / stickers / wristbands in the 7
+aura colors at an event, or a color you can flash on your lock screen. Then the
+app is just the radar, and recognition happens in the physical world — exactly
+the "you gotta actually meet" ethos.
+
+### Related concerns to design around
+
+- **GPS jitter vs. radar precision.** Consumer GPS is ±10–30 ft; a radar that
+  says "40 ft north" implies accuracy we don't have. Show a *fuzzy zone /
+  direction*, not a false-precise pinpoint, or it reads as broken. (Ties into
+  the location-jitter safety work — same fix serves both.)
+- **Foreground-only = no passive discovery** on web. You must actively hold the
+  app open to appear. Fine — even ideal — for event mode; a real limitation for
+  an always-on global map (which would eventually need the native wrapper).
+
+**Bet:** event-mode is the unlock. It fixes cold-start, fits the current tech,
+eases safety, and makes the color mechanic land. Global/ambient discovery is a
+*later* expansion, not the launch.
+
+---
+
 ## Status — done
 
 - [x] Radar UI (canvas: sweep, rings, blips flare on pass, your center dot)

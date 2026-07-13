@@ -201,8 +201,6 @@ export default function Home() {
     return <AuraField onDone={saveIdentity} />;
   }
 
-  const myChakra = CHAKRAS[aura];
-
   return (
     <main className="relative flex min-h-full flex-1 flex-col items-center justify-between overflow-hidden px-6 py-10">
       {/* ambient background glow, tinted to your aura */}
@@ -249,7 +247,7 @@ export default function Home() {
           className="mt-1 flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1 text-xs text-emerald-100/60 transition-colors hover:border-white/25"
         >
           <ShapeGlyph shape={shape} rgb={accent} size={14} />
-          {myChakra.name} {shape} · retune
+          change
         </button>
 
         {!isPresenceConfigured && (

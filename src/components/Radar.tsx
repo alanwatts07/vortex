@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { DotShape } from "@/lib/chakra";
-import { paintShape } from "@/lib/shapePaint";
 
 export type Blip = {
   /** angle in radians, 0 = east, increasing counter-clockwise */
@@ -13,8 +11,6 @@ export type Blip = {
   drift: number;
   /** "r, g, b" aura color; falls back to the radar accent */
   color?: string;
-  /** dot shape; falls back to a circle */
-  shape?: DotShape;
 };
 
 type RadarProps = {
@@ -24,8 +20,6 @@ type RadarProps = {
   blips: Blip[];
   /** "r, g, b" — your aura color, tints the chrome + your center dot */
   accent: string;
-  /** your own dot shape */
-  shape?: DotShape;
 };
 
 /**
@@ -33,19 +27,17 @@ type RadarProps = {
  * crosshairs, and blips that flare in their own aura color as the beam passes
  * over them. When `live` is false the whole thing dims to a dormant standby.
  */
-export default function Radar({ live, blips, accent, shape }: RadarProps) {
+export default function Radar({ live, blips, accent }: RadarProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const blipsRef = useRef<Blip[]>(blips);
   const liveRef = useRef(live);
   const accentRef = useRef(accent);
-  const shapeRef = useRef<DotShape>(shape ?? "circle");
 
   // keep latest props available to the animation loop without restarting it
   useEffect(() => {
     blipsRef.current = blips;
     liveRef.current = live;
     accentRef.current = accent;
-    shapeRef.current = shape ?? "circle";
   });
 
   useEffect(() => {
@@ -176,7 +168,10 @@ export default function Radar({ live, blips, accent, shape }: RadarProps) {
           ctx.fill();
         }
 
-        paintShape(ctx, bx, by, rad, b.shape ?? "circle", `rgba(${color}, ${a})`);
+        ctx.beginPath();
+        ctx.arc(bx, by, rad, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${color}, ${a})`;
+        ctx.fill();
       }
 
       // you, at the center
@@ -190,14 +185,12 @@ export default function Radar({ live, blips, accent, shape }: RadarProps) {
         ctx.fillStyle = halo;
         ctx.fill();
       }
-      paintShape(
-        ctx,
-        cx,
-        cy,
-        5.5,
-        shapeRef.current,
-        isLive ? `rgba(${accentRgb}, 1)` : `rgba(${accentRgb}, 0.35)`,
-      );
+      ctx.beginPath();
+      ctx.arc(cx, cy, 5.5, 0, Math.PI * 2);
+      ctx.fillStyle = isLive
+        ? `rgba(${accentRgb}, 1)`
+        : `rgba(${accentRgb}, 0.35)`;
+      ctx.fill();
 
       raf = requestAnimationFrame(draw);
     };

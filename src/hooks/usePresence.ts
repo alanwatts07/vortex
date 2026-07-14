@@ -3,51 +3,39 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase, isPresenceConfigured } from "@/lib/supabase";
 import { toRadarBlip, type Coords } from "@/lib/geo";
-import {
-  chakraRgb,
-  isShape,
-  type ChakraId,
-  type DotShape,
-} from "@/lib/chakra";
+import { auraRgb, type AuraId } from "@/lib/aura";
 import type { Blip } from "@/components/Radar";
 
 const CHANNEL = "vortex-lobby";
 const RANGE_METERS = 61; // ~200 ft
 
-type PresenceMeta = {
-  lat: number;
-  lng: number;
-  chakra: ChakraId;
-  shape: DotShape;
-};
+type PresenceMeta = { lat: number; lng: number; aura: AuraId };
 
 /**
  * Real-time presence over Supabase. While `on` and located, you broadcast your
- * coordinates + aura and receive everyone else's, projected onto the radar
- * relative to you and colored by their chakra. Returns `null` when presence
- * isn't configured (demo mode) so the caller can fall back to simulated blips.
+ * coordinates + aura color and receive everyone else's, projected onto the radar
+ * relative to you. Returns `null` when presence isn't configured (demo mode) so
+ * the caller can fall back to simulated orbs.
  */
 export function usePresence(
   on: boolean,
   coords: Coords | null,
-  aura: ChakraId,
-  shape: DotShape,
+  aura: AuraId,
 ): { blips: Blip[] | null; peerCount: number } {
   const [peers, setPeers] = useState<PresenceMeta[]>([]);
   const [selfId] = useState(() =>
     typeof crypto !== "undefined" ? crypto.randomUUID() : "anon",
   );
   const trackedRef = useRef(false);
-  const stateRef = useRef<{
-    coords: Coords | null;
-    aura: ChakraId;
-    shape: DotShape;
-  }>({ coords, aura, shape });
+  const stateRef = useRef<{ coords: Coords | null; aura: AuraId }>({
+    coords,
+    aura,
+  });
 
-  // keep the latest coords + aura + shape available to the subscribe callback
+  // keep the latest coords + aura available to the subscribe callback
   useEffect(() => {
-    stateRef.current = { coords, aura, shape };
-  }, [coords, aura, shape]);
+    stateRef.current = { coords, aura };
+  }, [coords, aura]);
 
   // join / leave the channel with the light
   useEffect(() => {
@@ -65,12 +53,7 @@ export function usePresence(
         if (key === selfId) continue;
         const meta = metas[metas.length - 1];
         if (meta && typeof meta.lat === "number") {
-          others.push({
-            lat: meta.lat,
-            lng: meta.lng,
-            chakra: meta.chakra,
-            shape: isShape(meta.shape) ? meta.shape : "circle",
-          });
+          others.push({ lat: meta.lat, lng: meta.lng, aura: meta.aura });
         }
       }
       setPeers(others);
@@ -81,9 +64,8 @@ export function usePresence(
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           trackedRef.current = true;
-          const { coords: c, aura: a, shape: sh } = stateRef.current;
-          if (c)
-            await channel.track({ lat: c.lat, lng: c.lng, chakra: a, shape: sh });
+          const { coords: c, aura: a } = stateRef.current;
+          if (c) await channel.track({ lat: c.lat, lng: c.lng, aura: a });
         }
       });
 
@@ -93,15 +75,15 @@ export function usePresence(
     };
   }, [on, selfId]);
 
-  // push new coordinates / aura / shape as they change
+  // push new coordinates / aura as they change
   useEffect(() => {
     if (!isPresenceConfigured || !supabase || !on || !coords) return;
     if (!trackedRef.current) return;
     const channel = supabase
       .getChannels()
       .find((c) => c.topic.endsWith(CHANNEL));
-    channel?.track({ lat: coords.lat, lng: coords.lng, chakra: aura, shape });
-  }, [on, coords, aura, shape]);
+    channel?.track({ lat: coords.lat, lng: coords.lng, aura });
+  }, [on, coords, aura]);
 
   if (!isPresenceConfigured) {
     return { blips: null, peerCount: 0 };
@@ -113,9 +95,7 @@ export function usePresence(
   const blips: Blip[] = me
     ? activePeers.flatMap((p) => {
         const b = toRadarBlip(me, p, RANGE_METERS);
-        return b
-          ? [{ ...b, color: chakraRgb(p.chakra), shape: p.shape }]
-          : [];
+        return b ? [{ ...b, color: auraRgb(p.aura) }] : [];
       })
     : [];
 

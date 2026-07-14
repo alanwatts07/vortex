@@ -5,29 +5,23 @@ import Radar, { type Blip } from "@/components/Radar";
 import VortexSwitch from "@/components/VortexSwitch";
 import AuraField from "@/components/AuraField";
 import IntroSplash from "@/components/IntroSplash";
-import ShapeGlyph from "@/components/ShapeGlyph";
 import { usePresence } from "@/hooks/usePresence";
 import { isPresenceConfigured } from "@/lib/supabase";
 import type { Coords } from "@/lib/geo";
 import {
-  CHAKRAS,
-  CHAKRA_ORDER,
-  chakraRgb,
-  DEFAULT_CHAKRA,
-  SHAPES,
-  DEFAULT_SHAPE,
-  isShape,
-  type ChakraId,
-  type DotShape,
-} from "@/lib/chakra";
+  AURA_COLORS,
+  auraRgb,
+  DEFAULT_AURA,
+  isAuraId,
+  type AuraId,
+} from "@/lib/aura";
 
 type GeoState = "idle" | "asking" | "granted" | "denied" | "unsupported";
 
 const AURA_KEY = "vortex.aura";
-const SHAPE_KEY = "vortex.shape";
 const INTRO_KEY = "vortex.seenIntro";
 
-// Deterministic drifting blips for demo mode — a mix of colors and shapes.
+// Deterministic drifting blips for demo mode — a spread of aura colors.
 function makeBlips(n: number): Blip[] {
   const out: Blip[] = [];
   let seed = 1337;
@@ -36,13 +30,12 @@ function makeBlips(n: number): Blip[] {
     return seed / 4294967296;
   };
   for (let i = 0; i < n; i++) {
-    const chakra = CHAKRAS[CHAKRA_ORDER[i % CHAKRA_ORDER.length]];
+    const color = AURA_COLORS[Math.floor(rand() * AURA_COLORS.length)];
     out.push({
       angle: rand() * Math.PI * 2,
       dist: 0.25 + rand() * 0.7,
       drift: (rand() - 0.5) * 0.15,
-      color: chakra.rgb,
-      shape: SHAPES[i % SHAPES.length],
+      color: color.rgb,
     });
   }
   return out;
@@ -50,8 +43,7 @@ function makeBlips(n: number): Blip[] {
 
 export default function Home() {
   const [ready, setReady] = useState(false);
-  const [aura, setAura] = useState<ChakraId | null>(null);
-  const [shape, setShape] = useState<DotShape>(DEFAULT_SHAPE);
+  const [aura, setAura] = useState<AuraId | null>(null);
   const [editingAura, setEditingAura] = useState(false);
   const [seenIntro, setSeenIntro] = useState(false);
   const [reopenIntro, setReopenIntro] = useState(false);
@@ -63,13 +55,12 @@ export default function Home() {
   const startedAt = useRef<number | null>(null);
   const watchId = useRef<number | null>(null);
 
-  const accent = chakraRgb(aura);
+  const accent = auraRgb(aura);
   const demoBlips = useMemo(() => makeBlips(7), []);
   const { blips: realBlips, peerCount } = usePresence(
     on,
     coords,
-    aura ?? DEFAULT_CHAKRA,
-    shape,
+    aura ?? DEFAULT_AURA,
   );
 
   const blips = realBlips ?? (on ? demoBlips : []);
@@ -78,18 +69,15 @@ export default function Home() {
   // load saved aura + intro flag once, after hydration (mount-time read is intentional)
   useEffect(() => {
     let savedAura: string | null = null;
-    let savedShape: string | null = null;
     let intro: string | null = null;
     try {
       savedAura = localStorage.getItem(AURA_KEY);
-      savedShape = localStorage.getItem(SHAPE_KEY);
       intro = localStorage.getItem(INTRO_KEY);
     } catch {
       // ignore storage errors (private mode, etc.)
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (savedAura && savedAura in CHAKRAS) setAura(savedAura as ChakraId);
-    if (isShape(savedShape)) setShape(savedShape);
+    if (isAuraId(savedAura)) setAura(savedAura);
     if (intro === "1") setSeenIntro(true);
     setReady(true);
   }, []);
@@ -104,19 +92,11 @@ export default function Home() {
     }
   };
 
-  const saveIdentity = ({
-    color,
-    shape: nextShape,
-  }: {
-    color: ChakraId;
-    shape: DotShape;
-  }) => {
+  const saveIdentity = ({ color }: { color: AuraId }) => {
     setAura(color);
-    setShape(nextShape);
     setEditingAura(false);
     try {
       localStorage.setItem(AURA_KEY, color);
-      localStorage.setItem(SHAPE_KEY, nextShape);
     } catch {
       // ignore
     }
@@ -246,7 +226,13 @@ export default function Home() {
           onClick={() => setEditingAura(true)}
           className="mt-1 flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1 text-xs text-emerald-100/60 transition-colors hover:border-white/25"
         >
-          <ShapeGlyph shape={shape} rgb={accent} size={14} />
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{
+              background: `rgb(${accent})`,
+              boxShadow: `0 0 10px 1px rgba(${accent},0.8)`,
+            }}
+          />
           change
         </button>
 
@@ -260,7 +246,7 @@ export default function Home() {
       {/* radar */}
       <div className="relative flex w-full max-w-sm flex-1 items-center justify-center py-6">
         <div className="relative aspect-square w-full max-w-[22rem]">
-          <Radar live={on} blips={blips} accent={accent} shape={shape} />
+          <Radar live={on} blips={blips} accent={accent} />
         </div>
       </div>
 

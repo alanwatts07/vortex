@@ -1,71 +1,101 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  CHAKRAS,
-  CHAKRA_ORDER,
-  SHAPES,
-  type ChakraId,
-  type DotShape,
-} from "@/lib/chakra";
-import { paintShape } from "@/lib/shapePaint";
+import { AURA_COLORS, type AuraId } from "@/lib/aura";
 
 type Props = {
-  onDone: (aura: { color: ChakraId; shape: DotShape }) => void;
+  onDone: (aura: { color: AuraId }) => void;
 };
 
-type FloatItem = {
-  color: ChakraId;
+type Orb = {
+  id: AuraId;
   rgb: string;
-  shape: DotShape;
   x: number;
   y: number;
   vx: number;
   vy: number;
-  r: number;
+  rx: number;
+  ry: number;
+  rot: number;
+  vrot: number;
   pulse: number;
 };
 
-const COUNT = 14;
 const smooth = (t: number) => t * t * (3 - 2 * t);
 
-function makeField(w: number, h: number): FloatItem[] {
-  const items: FloatItem[] = [];
-  const base = Math.max(16, Math.min(30, Math.min(w, h) * 0.055));
-  for (let i = 0; i < COUNT; i++) {
-    const color = CHAKRA_ORDER[i % CHAKRA_ORDER.length];
-    const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-    const m = base * 2;
-    items.push({
-      color,
-      rgb: CHAKRAS[color].rgb,
-      shape,
-      x: m + Math.random() * (w - m * 2),
-      y: m + Math.random() * (h - m * 2),
-      vx: (Math.random() - 0.5) * 26,
-      vy: (Math.random() - 0.5) * 26,
-      r: base * (0.8 + Math.random() * 0.5),
+function makeField(w: number, h: number): Orb[] {
+  const base = Math.max(15, Math.min(30, Math.min(w, h) * 0.05));
+  // one orb per color, shuffled so the spectrum isn't laid out in a rainbow line
+  const colors = [...AURA_COLORS].sort(() => Math.random() - 0.5);
+  return colors.map((c) => {
+    const r = base * (0.75 + Math.random() * 0.55);
+    const m = r * 2;
+    return {
+      id: c.id,
+      rgb: c.rgb,
+      x: m + Math.random() * Math.max(1, w - m * 2),
+      y: m + Math.random() * Math.max(1, h - m * 2),
+      vx: (Math.random() - 0.5) * 24,
+      vy: (Math.random() - 0.5) * 24,
+      rx: r * (1 + Math.random() * 0.35), // gently oval
+      ry: r * (0.8 + Math.random() * 0.2),
+      rot: Math.random() * Math.PI,
+      vrot: (Math.random() - 0.5) * 0.25,
       pulse: Math.random() * Math.PI * 2,
-    });
-  }
-  return items;
+    };
+  });
+}
+
+/** A soft glowing orb — radial falloff so it reads as energy, not a hard dot. */
+function paintOrb(
+  ctx: CanvasRenderingContext2D,
+  o: Orb,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  alpha: number,
+) {
+  const rMax = Math.max(rx, ry);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(o.rot);
+
+  // outer bloom
+  const bloom = ctx.createRadialGradient(0, 0, 0, 0, 0, rMax * 2.1);
+  bloom.addColorStop(0, `rgba(${o.rgb}, ${0.4 * alpha})`);
+  bloom.addColorStop(0.5, `rgba(${o.rgb}, ${0.12 * alpha})`);
+  bloom.addColorStop(1, `rgba(${o.rgb}, 0)`);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx * 2.1, ry * 2.1, 0, 0, Math.PI * 2);
+  ctx.fillStyle = bloom;
+  ctx.fill();
+
+  // core
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, rMax);
+  core.addColorStop(0, `rgba(${o.rgb}, ${0.98 * alpha})`);
+  core.addColorStop(0.55, `rgba(${o.rgb}, ${0.8 * alpha})`);
+  core.addColorStop(1, `rgba(${o.rgb}, 0)`);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fillStyle = core;
+  ctx.fill();
+
+  ctx.restore();
 }
 
 /**
- * A drifting constellation of colored shapes. Tap the one you're drawn to and it
- * swells to the center — that becomes your aura. No labels, no names: interpret
- * the color and form however you like.
+ * A drifting field of colored energy orbs. Tap the one you're drawn to and it
+ * swells to the center — that color becomes your aura. No labels, no names.
  */
 export default function AuraField({ onDone }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const itemsRef = useRef<FloatItem[]>([]);
+  const orbsRef = useRef<Orb[]>([]);
   const selectedRef = useRef<number | null>(null);
   const progressRef = useRef(0);
-  const [chosen, setChosen] = useState<{
-    color: ChakraId;
-    rgb: string;
-    shape: DotShape;
-  } | null>(null);
+  const [chosen, setChosen] = useState<{ color: AuraId; rgb: string } | null>(
+    null,
+  );
   const [stirNonce, setStirNonce] = useState(0);
 
   useEffect(() => {
@@ -80,7 +110,6 @@ export default function AuraField({ onDone }: Props) {
 
     let raf = 0;
     let last = performance.now();
-
     const size = () => ({ w: canvas.clientWidth, h: canvas.clientHeight });
 
     const resize = () => {
@@ -89,7 +118,7 @@ export default function AuraField({ onDone }: Props) {
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (itemsRef.current.length === 0) itemsRef.current = makeField(w, h);
+      if (orbsRef.current.length === 0) orbsRef.current = makeField(w, h);
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -99,7 +128,7 @@ export default function AuraField({ onDone }: Props) {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
       const { w, h } = size();
-      const items = itemsRef.current;
+      const orbs = orbsRef.current;
       const sel = selectedRef.current;
 
       if (sel !== null) {
@@ -108,53 +137,43 @@ export default function AuraField({ onDone }: Props) {
       const p = smooth(progressRef.current);
       const targetX = w / 2;
       const targetY = h * 0.4;
-      const bigR = Math.min(w, h) * 0.14;
+      const bigR = Math.min(w, h) * 0.15;
 
       ctx.clearRect(0, 0, w, h);
 
-      items.forEach((it, i) => {
-        // drift + wrap
+      orbs.forEach((o, i) => {
         if (!reduced && sel === null) {
-          it.x += it.vx * dt;
-          it.y += it.vy * dt;
-          const m = it.r * 2;
-          if (it.x < -m) it.x = w + m;
-          if (it.x > w + m) it.x = -m;
-          if (it.y < -m) it.y = h + m;
-          if (it.y > h + m) it.y = -m;
+          o.x += o.vx * dt;
+          o.y += o.vy * dt;
+          const m = Math.max(o.rx, o.ry) * 2.2;
+          if (o.x < -m) o.x = w + m;
+          if (o.x > w + m) o.x = -m;
+          if (o.y < -m) o.y = h + m;
+          if (o.y > h + m) o.y = -m;
+          o.rot += o.vrot * dt;
         }
-        it.pulse += dt * 1.5;
+        o.pulse += dt * 1.4;
 
         const isSel = i === sel;
-        let x = it.x;
-        let y = it.y;
-        let r = it.r;
+        let x = o.x;
+        let y = o.y;
+        let rx = o.rx;
+        let ry = o.ry;
         let alpha = 1;
 
         if (sel !== null) {
           if (isSel) {
-            x = it.x + (targetX - it.x) * p;
-            y = it.y + (targetY - it.y) * p;
-            r = it.r + (bigR - it.r) * p;
+            x = o.x + (targetX - o.x) * p;
+            y = o.y + (targetY - o.y) * p;
+            rx = o.rx + (bigR - o.rx) * p;
+            ry = o.ry + (bigR - o.ry) * p;
           } else {
-            alpha = 1 - p * 0.88; // fade the rest away
+            alpha = 1 - p * 0.9;
           }
         }
 
-        const breathe = reduced ? 1 : 1 + Math.sin(it.pulse) * 0.06;
-        const rr = r * breathe;
-
-        // halo
-        const haloR = rr * (isSel && sel !== null ? 2.4 : 1.9);
-        const halo = ctx.createRadialGradient(x, y, 0, x, y, haloR);
-        halo.addColorStop(0, `rgba(${it.rgb}, ${0.45 * alpha})`);
-        halo.addColorStop(1, `rgba(${it.rgb}, 0)`);
-        ctx.beginPath();
-        ctx.arc(x, y, haloR, 0, Math.PI * 2);
-        ctx.fillStyle = halo;
-        ctx.fill();
-
-        paintShape(ctx, x, y, rr, it.shape, `rgba(${it.rgb}, ${0.95 * alpha})`);
+        const breathe = reduced ? 1 : 1 + Math.sin(o.pulse) * 0.05;
+        paintOrb(ctx, o, x, y, rx * breathe, ry * breathe, alpha);
       });
 
       raf = requestAnimationFrame(draw);
@@ -172,7 +191,7 @@ export default function AuraField({ onDone }: Props) {
     if (stirNonce === 0) return;
     const canvas = canvasRef.current;
     if (canvas) {
-      itemsRef.current = makeField(canvas.clientWidth, canvas.clientHeight);
+      orbsRef.current = makeField(canvas.clientWidth, canvas.clientHeight);
     }
   }, [stirNonce]);
 
@@ -185,9 +204,9 @@ export default function AuraField({ onDone }: Props) {
 
     let hit: number | null = null;
     let bestDist = Infinity;
-    itemsRef.current.forEach((it, i) => {
-      const d = Math.hypot(px - it.x, py - it.y);
-      const reach = it.r * 1.5 + 14;
+    orbsRef.current.forEach((o, i) => {
+      const d = Math.hypot(px - o.x, py - o.y);
+      const reach = Math.max(o.rx, o.ry) * 1.25 + 10;
       if (d < reach && d < bestDist) {
         bestDist = d;
         hit = i;
@@ -195,10 +214,10 @@ export default function AuraField({ onDone }: Props) {
     });
 
     if (hit !== null) {
-      const it = itemsRef.current[hit];
+      const o = orbsRef.current[hit];
       selectedRef.current = hit;
       progressRef.current = 0;
-      setChosen({ color: it.color, rgb: it.rgb, shape: it.shape });
+      setChosen({ color: o.id, rgb: o.rgb });
     } else if (selectedRef.current === null) {
       stir();
     }
@@ -211,7 +230,7 @@ export default function AuraField({ onDone }: Props) {
     setStirNonce((n) => n + 1);
   };
 
-  // return to the floating field, keeping the same shapes (just re-choose)
+  // return to the floating field, keeping the same orbs (just re-choose)
   const deselect = () => {
     selectedRef.current = null;
     progressRef.current = 0;
@@ -241,9 +260,7 @@ export default function AuraField({ onDone }: Props) {
           <>
             <button
               type="button"
-              onClick={() =>
-                onDone({ color: chosen.color, shape: chosen.shape })
-              }
+              onClick={() => onDone({ color: chosen.color })}
               className="w-full max-w-xs rounded-full px-6 py-4 text-base font-medium text-black transition-transform active:scale-[0.99]"
               style={{
                 background: `rgb(${chosen.rgb})`,

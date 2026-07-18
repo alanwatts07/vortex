@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, isPresenceConfigured } from "@/lib/supabase";
-import { toRadarBlip, type Coords } from "@/lib/geo";
+import { toRadarBlip, distanceMeters, type Coords } from "@/lib/geo";
 import { auraRgb, type AuraId } from "@/lib/aura";
 import type { Blip } from "@/components/Radar";
 
@@ -10,21 +10,31 @@ const CHANNEL = "vortex-lobby";
 const RANGE_METERS = 61; // ~200 ft
 
 type PresenceMeta = { lat: number; lng: number; aura: AuraId };
+type Peer = PresenceMeta & { id: string };
+
+export type IncomingPing = { n: number; aura: AuraId };
 
 /**
  * Real-time presence over Supabase. While `on` and located, you broadcast your
  * coordinates + aura color and receive everyone else's, projected onto the radar
- * relative to you. Returns `null` when presence isn't configured (demo mode) so
- * the caller can fall back to simulated orbs.
+ * relative to you. Also carries lightweight "pings" between two people. Returns
+ * `blips: null` when presence isn't configured (demo mode).
  */
 export function usePresence(
   on: boolean,
   coords: Coords | null,
   aura: AuraId,
-): { blips: Blip[] | null; peerCount: number; status: string } {
-  const [peers, setPeers] = useState<PresenceMeta[]>([]);
+): {
+  blips: Blip[] | null;
+  peerCount: number;
+  status: string;
+  ping: (peerId: string) => void;
+  incoming: IncomingPing | null;
+} {
+  const [peers, setPeers] = useState<Peer[]>([]);
   const [status, setStatus] = useState("idle");
   const [epoch, setEpoch] = useState(0);
+  const [incoming, setIncoming] = useState<IncomingPing | null>(null);
   const [selfId] = useState(() =>
     typeof crypto !== "undefined" ? crypto.randomUUID() : "anon",
   );
@@ -44,7 +54,10 @@ export function usePresence(
   useEffect(() => {
     if (!on) return;
     const kick = () => {
-      if (typeof document === "undefined" || document.visibilityState === "visible") {
+      if (
+        typeof document === "undefined" ||
+        document.visibilityState === "visible"
+      ) {
         setEpoch((e) => e + 1);
       }
     };
@@ -69,12 +82,12 @@ export function usePresence(
 
     const sync = () => {
       const state = channel.presenceState<PresenceMeta>();
-      const others: PresenceMeta[] = [];
+      const others: Peer[] = [];
       for (const [key, metas] of Object.entries(state)) {
         if (key === selfId) continue;
         const meta = metas[metas.length - 1];
         if (meta && typeof meta.lat === "number") {
-          others.push({ lat: meta.lat, lng: meta.lng, aura: meta.aura });
+          others.push({ id: key, lat: meta.lat, lng: meta.lng, aura: meta.aura });
         }
       }
       setPeers(others);
@@ -84,6 +97,14 @@ export function usePresence(
       .on("presence", { event: "sync" }, sync)
       .on("presence", { event: "join" }, sync)
       .on("presence", { event: "leave" }, sync)
+      .on("broadcast", { event: "ping" }, ({ payload }) => {
+        if (payload?.to === selfId) {
+          setIncoming((prev) => ({
+            n: (prev?.n ?? 0) + 1,
+            aura: payload.fromAura,
+          }));
+        }
+      })
       .subscribe(async (st) => {
         setStatus(st);
         if (st === "SUBSCRIBED") {
@@ -109,8 +130,22 @@ export function usePresence(
     channel?.track({ lat: coords.lat, lng: coords.lng, aura });
   }, [on, coords, aura]);
 
+  const ping = useCallback(
+    (peerId: string) => {
+      const channel = supabase
+        ?.getChannels()
+        .find((c) => c.topic.endsWith(CHANNEL));
+      channel?.send({
+        type: "broadcast",
+        event: "ping",
+        payload: { to: peerId, from: selfId, fromAura: stateRef.current.aura },
+      });
+    },
+    [selfId],
+  );
+
   if (!isPresenceConfigured) {
-    return { blips: null, peerCount: 0, status: "demo" };
+    return { blips: null, peerCount: 0, status: "demo", ping, incoming: null };
   }
 
   // mask stale peers when the light is off instead of clearing state in an effect
@@ -119,9 +154,18 @@ export function usePresence(
   const blips: Blip[] = me
     ? activePeers.flatMap((p) => {
         const b = toRadarBlip(me, p, RANGE_METERS);
-        return b ? [{ ...b, color: auraRgb(p.aura) }] : [];
+        return b
+          ? [
+              {
+                ...b,
+                color: auraRgb(p.aura),
+                id: p.id,
+                distM: distanceMeters(me, p),
+              },
+            ]
+          : [];
       })
     : [];
 
-  return { blips, peerCount: activePeers.length, status };
+  return { blips, peerCount: activePeers.length, status, ping, incoming };
 }

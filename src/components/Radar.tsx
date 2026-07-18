@@ -11,6 +11,10 @@ export type Blip = {
   drift: number;
   /** "r, g, b" aura color; falls back to the radar accent */
   color?: string;
+  /** presence id of the peer this blip represents (real peers only) */
+  id?: string;
+  /** distance to the peer in meters (real peers only) */
+  distM?: number;
 };
 
 type RadarProps = {
@@ -20,6 +24,8 @@ type RadarProps = {
   blips: Blip[];
   /** "r, g, b" — your aura color, tints the chrome + your center dot */
   accent: string;
+  /** tapping a blip (or empty space → null) */
+  onPickBlip?: (blip: Blip | null) => void;
 };
 
 /**
@@ -27,7 +33,7 @@ type RadarProps = {
  * crosshairs, and blips that flare in their own aura color as the beam passes
  * over them. When `live` is false the whole thing dims to a dormant standby.
  */
-export default function Radar({ live, blips, accent }: RadarProps) {
+export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const blipsRef = useRef<Blip[]>(blips);
   const liveRef = useRef(live);
@@ -202,11 +208,38 @@ export default function Radar({ live, blips, accent }: RadarProps) {
     };
   }, []);
 
+  const handlePick = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!onPickBlip) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const size = canvas.clientWidth;
+    const cx = size / 2;
+    const cy = size / 2;
+    const r = size / 2 - 2;
+    let hit: Blip | null = null;
+    let best = Infinity;
+    for (const b of blipsRef.current) {
+      if (!b.id) continue; // only real, pingable peers
+      const bx = cx + Math.cos(b.angle) * b.dist * r;
+      const by = cy + Math.sin(b.angle) * b.dist * r;
+      const d = Math.hypot(px - bx, py - by);
+      if (d < 26 && d < best) {
+        best = d;
+        hit = b;
+      }
+    }
+    onPickBlip(hit);
+  };
+
   return (
     <canvas
       ref={canvasRef}
+      onPointerDown={onPickBlip ? handlePick : undefined}
       className="block h-full w-full"
-      style={{ imageRendering: "auto" }}
+      style={{ imageRendering: "auto", touchAction: "manipulation" }}
       aria-hidden
     />
   );

@@ -56,9 +56,12 @@ export default function Home() {
   const watchId = useRef<number | null>(null);
 
   const [debug, setDebug] = useState(false);
+  const [picked, setPicked] = useState<Blip | null>(null);
+  const [pingSent, setPingSent] = useState(false);
+  const [incomingAura, setIncomingAura] = useState<string | null>(null);
   const accent = auraRgb(aura);
   const demoBlips = useMemo(() => makeBlips(7), []);
-  const { blips: realBlips, peerCount, status } = usePresence(
+  const { blips: realBlips, peerCount, status, ping, incoming } = usePresence(
     on,
     coords,
     aura ?? DEFAULT_AURA,
@@ -162,6 +165,36 @@ export default function Home() {
     setOn(next);
   };
 
+  // someone pinged you → buzz + flash a toast in their color
+  useEffect(() => {
+    if (!incoming) return;
+    // reacting to a websocket-driven ping is a genuine external event
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIncomingAura(auraRgb(incoming.aura));
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate([60, 40, 60]);
+    }
+    const t = setTimeout(() => setIncomingAura(null), 3500);
+    return () => clearTimeout(t);
+  }, [incoming]);
+
+  const sendPing = () => {
+    if (!picked?.id) return;
+    ping(picked.id);
+    setPingSent(true);
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(30);
+    }
+    setTimeout(() => {
+      setPingSent(false);
+      setPicked(null);
+    }, 1400);
+  };
+
+  const pickedFeet = picked?.distM
+    ? Math.max(1, Math.round(picked.distM * 3.28084))
+    : null;
+
   const mmss = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(
     elapsed % 60,
   ).padStart(2, "0")}`;
@@ -205,6 +238,27 @@ export default function Home() {
           transition: "background 600ms ease",
         }}
       />
+
+      {/* someone pinged you */}
+      {incomingAura && (
+        <div
+          className="fixed left-1/2 top-6 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border px-4 py-2 text-sm"
+          style={{
+            borderColor: `rgba(${incomingAura},0.5)`,
+            background: `rgba(${incomingAura},0.15)`,
+            boxShadow: `0 0 30px -6px rgba(${incomingAura},0.8)`,
+          }}
+        >
+          <span
+            className="h-3 w-3 rounded-full"
+            style={{
+              background: `rgb(${incomingAura})`,
+              boxShadow: `0 0 12px 2px rgba(${incomingAura},0.9)`,
+            }}
+          />
+          someone&rsquo;s reaching out — look around 👀
+        </div>
+      )}
 
       {/* header */}
       <header className="flex flex-col items-center gap-2 text-center">
@@ -257,7 +311,19 @@ export default function Home() {
       {/* radar */}
       <div className="relative flex w-full max-w-sm flex-1 items-center justify-center py-6">
         <div className="relative aspect-square w-full max-w-[22rem]">
-          <Radar live={on} blips={blips} accent={accent} />
+          <Radar
+            live={on}
+            blips={blips}
+            accent={accent}
+            onPickBlip={
+              on
+                ? (b) => {
+                    setPicked(b);
+                    setPingSent(false);
+                  }
+                : undefined
+            }
+          />
         </div>
       </div>
 
@@ -278,6 +344,36 @@ export default function Home() {
             </span>
           )}
         </div>
+
+        {picked && pickedFeet !== null && (
+          <div
+            className="flex items-center gap-3 rounded-2xl border px-4 py-3"
+            style={{
+              borderColor: `rgba(${picked.color},0.4)`,
+              background: `rgba(${picked.color},0.08)`,
+            }}
+          >
+            <span
+              className="h-3 w-3 shrink-0 rounded-full"
+              style={{
+                background: `rgb(${picked.color})`,
+                boxShadow: `0 0 12px 2px rgba(${picked.color},0.8)`,
+              }}
+            />
+            <span className="text-sm text-emerald-50/80">
+              ~{pickedFeet} ft away
+            </span>
+            <button
+              type="button"
+              onClick={sendPing}
+              disabled={pingSent}
+              className="rounded-full px-4 py-1.5 text-sm font-medium text-black transition-transform active:scale-95"
+              style={{ background: `rgb(${picked.color})` }}
+            >
+              {pingSent ? "pinged ✓" : "Ping"}
+            </button>
+          </div>
+        )}
 
         <VortexSwitch on={on} onChange={toggle} color={accent} />
 

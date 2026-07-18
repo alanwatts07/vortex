@@ -11,6 +11,8 @@ export type Blip = {
   drift: number;
   /** "r, g, b" aura color; falls back to the radar accent */
   color?: string;
+  /** "r, g, b" center color if different from the glow (the void) */
+  core?: string;
   /** presence id of the peer this blip represents (real peers only) */
   id?: string;
   /** distance to the peer in meters (real peers only) */
@@ -261,7 +263,7 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
 
         ctx.beginPath();
         ctx.arc(bx, by, rad, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${color}, ${isLive ? 0.7 + g * 0.3 : 0.25})`;
+        ctx.fillStyle = `rgba(${b.core ?? color}, ${isLive ? 0.7 + g * 0.3 : 0.25})`;
         ctx.fill();
       }
 

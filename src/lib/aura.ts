@@ -2,8 +2,10 @@ export type AuraId = string;
 
 export type AuraColor = {
   id: AuraId;
-  /** "r, g, b" — ready to drop into rgba() */
+  /** "r, g, b" halo/glow color — ready to drop into rgba() */
   rgb: string;
+  /** optional "r, g, b" center color if different from the glow (e.g. the void) */
+  core?: string;
 };
 
 /** HSL → "r, g, b" so the whole app can keep using rgba(). */
@@ -32,13 +34,14 @@ const HUE_STEP = 12; // 30 colors evenly spaced around the wheel
  * is purely color now — every dot is an orb, so the hue is what you recognize.
  * Colors are unique per live person; a bigger palette means fewer clashes.
  */
-export const AURA_COLORS: AuraColor[] = Array.from(
-  { length: 360 / HUE_STEP },
-  (_, i) => {
+export const AURA_COLORS: AuraColor[] = [
+  ...Array.from({ length: 360 / HUE_STEP }, (_, i) => {
     const hue = i * HUE_STEP;
     return { id: `h${hue}`, rgb: hslToRgb(hue, 0.85, 0.62) };
-  },
-);
+  }),
+  // the void — a black core with a white halo
+  { id: "void", rgb: "255, 255, 255", core: "0, 0, 0" },
+];
 
 const BY_ID = new Map(AURA_COLORS.map((c) => [c.id, c]));
 
@@ -47,6 +50,12 @@ export const DEFAULT_AURA: AuraId = "h156";
 export function auraRgb(id: AuraId | null | undefined): string {
   const found = id ? BY_ID.get(id) : undefined;
   return found?.rgb ?? BY_ID.get(DEFAULT_AURA)!.rgb;
+}
+
+/** Center color (differs from the halo only for special auras like the void). */
+export function auraCore(id: AuraId | null | undefined): string {
+  const found = (id ? BY_ID.get(id) : undefined) ?? BY_ID.get(DEFAULT_AURA)!;
+  return found.core ?? found.rgb;
 }
 
 export function isAuraId(v: unknown): v is AuraId {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AURA_COLORS, type AuraId } from "@/lib/aura";
+import { AURA_COLORS, auraCore, type AuraId } from "@/lib/aura";
 
 type Props = {
   onDone: (aura: { color: AuraId }) => void;
@@ -12,6 +12,7 @@ type Props = {
 type Orb = {
   id: AuraId;
   rgb: string;
+  core: string;
   x: number;
   y: number;
   vx: number;
@@ -38,6 +39,7 @@ function makeField(w: number, h: number, taken: string[]): Orb[] {
     return {
       id: c.id,
       rgb: c.rgb,
+      core: auraCore(c.id),
       x: m + Math.random() * Math.max(1, w - m * 2),
       y: m + Math.random() * Math.max(1, h - m * 2),
       vx: (Math.random() - 0.5) * 24,
@@ -76,11 +78,11 @@ function paintOrb(
   ctx.fillStyle = bloom;
   ctx.fill();
 
-  // core
+  // core (its own color — black for the void)
   const core = ctx.createRadialGradient(0, 0, 0, 0, 0, rMax);
-  core.addColorStop(0, `rgba(${o.rgb}, ${0.98 * alpha})`);
-  core.addColorStop(0.55, `rgba(${o.rgb}, ${0.8 * alpha})`);
-  core.addColorStop(1, `rgba(${o.rgb}, 0)`);
+  core.addColorStop(0, `rgba(${o.core}, ${0.98 * alpha})`);
+  core.addColorStop(0.55, `rgba(${o.core}, ${0.8 * alpha})`);
+  core.addColorStop(1, `rgba(${o.core}, 0)`);
   ctx.beginPath();
   ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
   ctx.fillStyle = core;

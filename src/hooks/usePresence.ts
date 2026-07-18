@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase, isPresenceConfigured } from "@/lib/supabase";
 import { toRadarBlip, distanceMeters, type Coords } from "@/lib/geo";
-import { auraRgb, type AuraId } from "@/lib/aura";
+import { auraRgb, auraCore, type AuraId } from "@/lib/aura";
 import type { Blip } from "@/components/Radar";
 
 const CHANNEL = "finding-us-lobby";
@@ -314,7 +314,15 @@ export function usePresence(
     ? activePeers.flatMap((p) => {
         const b = toRadarBlip(me, p, RANGE_METERS);
         return b
-          ? [{ ...b, color: auraRgb(p.aura), id: p.id, distM: distanceMeters(me, p) }]
+          ? [
+              {
+                ...b,
+                color: auraRgb(p.aura),
+                core: auraCore(p.aura),
+                id: p.id,
+                distM: distanceMeters(me, p),
+              },
+            ]
           : [];
       })
     : [];

@@ -7,7 +7,7 @@ import { auraRgb, type AuraId } from "@/lib/aura";
 import type { Blip } from "@/components/Radar";
 
 const CHANNEL = "finding-us-lobby";
-const RANGE_METERS = 61; // ~200 ft
+const RANGE_METERS = 1609; // ~1 mile
 const HEARTBEAT_MS = 3000; // re-announce yourself this often
 const STALE_MS = 9000; // drop a peer we haven't heard from in this long
 

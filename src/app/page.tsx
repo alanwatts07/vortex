@@ -191,9 +191,12 @@ export default function Home() {
     }, 1400);
   };
 
-  const pickedFeet = picked?.distM
-    ? Math.max(1, Math.round(picked.distM * 3.28084))
-    : null;
+  const pickedDist =
+    picked?.distM != null
+      ? picked.distM < 305
+        ? `~${Math.max(1, Math.round(picked.distM * 3.28084))} ft away`
+        : `~${(picked.distM / 1609.34).toFixed(1)} mi away`
+      : null;
 
   const mmss = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(
     elapsed % 60,
@@ -350,7 +353,7 @@ export default function Home() {
           ) : null}
         </div>
 
-        {picked && pickedFeet !== null && (
+        {picked && pickedDist !== null && (
           <div
             className="flex items-center gap-3 rounded-2xl border px-4 py-3"
             style={{
@@ -365,9 +368,7 @@ export default function Home() {
                 boxShadow: `0 0 12px 2px rgba(${picked.color},0.8)`,
               }}
             />
-            <span className="text-sm text-emerald-50/80">
-              ~{pickedFeet} ft away
-            </span>
+            <span className="text-sm text-emerald-50/80">{pickedDist}</span>
             <button
               type="button"
               onClick={sendPing}

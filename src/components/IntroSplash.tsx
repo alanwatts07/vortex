@@ -29,8 +29,7 @@ export default function IntroSplash({ onDone }: Props) {
         </div>
 
         <p className="max-w-xs text-sm leading-relaxed text-emerald-100/55">
-          Holding a stranger&rsquo;s gaze a moment too long is the whole signal —
-          you&rsquo;re the two who were looking for each other.
+          Let it linger a beat too long — you&rsquo;re the two who came looking.
         </p>
 
         <p className="text-sm italic text-emerald-100/40">The rest is yours.</p>

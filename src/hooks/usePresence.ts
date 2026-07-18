@@ -8,17 +8,18 @@ import type { Blip } from "@/components/Radar";
 
 const CHANNEL = "vortex-lobby";
 const RANGE_METERS = 61; // ~200 ft
+const HEARTBEAT_MS = 3000; // re-announce yourself this often
+const STALE_MS = 9000; // drop a peer we haven't heard from in this long
 
-type PresenceMeta = { lat: number; lng: number; aura: AuraId };
-type Peer = PresenceMeta & { id: string };
+type Peer = { id: string; lat: number; lng: number; aura: AuraId; seen: number };
 
 export type IncomingPing = { n: number; aura: AuraId };
 
 /**
- * Real-time presence over Supabase. While `on` and located, you broadcast your
- * coordinates + aura color and receive everyone else's, projected onto the radar
- * relative to you. Also carries lightweight "pings" between two people. Returns
- * `blips: null` when presence isn't configured (demo mode).
+ * Real-time presence over Supabase *broadcast* (not presence.track, which
+ * accumulates metas and drops rapid updates). Each device announces
+ * {id, coords, aura} on change + on a heartbeat; peers are pruned when they go
+ * quiet. Also carries lightweight pings. `blips` is null in demo mode.
  */
 export function usePresence(
   on: boolean,
@@ -38,13 +39,11 @@ export function usePresence(
   const [selfId] = useState(() =>
     typeof crypto !== "undefined" ? crypto.randomUUID() : "anon",
   );
-  const trackedRef = useRef(false);
-  const stateRef = useRef<{ coords: Coords | null; aura: AuraId }>({
-    coords,
-    aura,
-  });
 
-  // keep the latest coords + aura available to the subscribe callback
+  const stateRef = useRef<{ coords: Coords | null; aura: AuraId }>({ coords, aura });
+  const peersRef = useRef<Map<string, Peer>>(new Map());
+  const announceRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     stateRef.current = { coords, aura };
   }, [coords, aura]);
@@ -71,63 +70,77 @@ export function usePresence(
     };
   }, [on]);
 
-  // join / leave the channel with the light (re-runs on reconnect via epoch)
+  // join the channel; broadcast presence + prune stale peers
   useEffect(() => {
     if (!isPresenceConfigured || !supabase || !on) return;
     const client = supabase;
-
     const channel = client.channel(CHANNEL, {
-      config: { presence: { key: selfId } },
+      config: { broadcast: { self: false } },
     });
 
-    const sync = () => {
-      const state = channel.presenceState<PresenceMeta>();
-      const others: Peer[] = [];
-      for (const [key, metas] of Object.entries(state)) {
-        if (key === selfId) continue;
-        const meta = metas[metas.length - 1];
-        if (meta && typeof meta.lat === "number") {
-          others.push({ id: key, lat: meta.lat, lng: meta.lng, aura: meta.aura });
-        }
-      }
-      setPeers(others);
+    const commit = () => setPeers(Array.from(peersRef.current.values()));
+
+    const announce = () => {
+      const { coords: c, aura: a } = stateRef.current;
+      if (!c) return;
+      channel.send({
+        type: "broadcast",
+        event: "here",
+        payload: { id: selfId, lat: c.lat, lng: c.lng, aura: a },
+      });
     };
+    announceRef.current = announce;
 
     channel
-      .on("presence", { event: "sync" }, sync)
-      .on("presence", { event: "join" }, sync)
-      .on("presence", { event: "leave" }, sync)
+      .on("broadcast", { event: "here" }, ({ payload }) => {
+        if (!payload || payload.id === selfId) return;
+        peersRef.current.set(payload.id, {
+          id: payload.id,
+          lat: payload.lat,
+          lng: payload.lng,
+          aura: payload.aura,
+          seen: Date.now(),
+        });
+        commit();
+      })
+      .on("broadcast", { event: "bye" }, ({ payload }) => {
+        if (payload?.id && peersRef.current.delete(payload.id)) commit();
+      })
       .on("broadcast", { event: "ping" }, ({ payload }) => {
         if (payload?.to === selfId) {
-          setIncoming((prev) => ({
-            n: (prev?.n ?? 0) + 1,
-            aura: payload.fromAura,
-          }));
+          setIncoming((prev) => ({ n: (prev?.n ?? 0) + 1, aura: payload.fromAura }));
         }
       })
-      .subscribe(async (st) => {
+      .subscribe((st) => {
         setStatus(st);
-        if (st === "SUBSCRIBED") {
-          trackedRef.current = true;
-          const { coords: c, aura: a } = stateRef.current;
-          if (c) await channel.track({ lat: c.lat, lng: c.lng, aura: a });
-        }
+        if (st === "SUBSCRIBED") announce();
       });
 
+    // heartbeat: re-announce + drop peers we haven't heard from
+    const hb = setInterval(() => {
+      announce();
+      const now = Date.now();
+      let changed = false;
+      for (const [id, p] of peersRef.current) {
+        if (now - p.seen > STALE_MS) {
+          peersRef.current.delete(id);
+          changed = true;
+        }
+      }
+      if (changed) commit();
+    }, HEARTBEAT_MS);
+
     return () => {
-      trackedRef.current = false;
+      clearInterval(hb);
+      channel.send({ type: "broadcast", event: "bye", payload: { id: selfId } });
+      announceRef.current = () => {};
       client.removeChannel(channel);
     };
   }, [on, selfId, epoch]);
 
-  // push new coordinates / aura as they change
+  // announce immediately when your coords or aura change
   useEffect(() => {
-    if (!isPresenceConfigured || !supabase || !on || !coords) return;
-    if (!trackedRef.current) return;
-    const channel = supabase
-      .getChannels()
-      .find((c) => c.topic.endsWith(CHANNEL));
-    channel?.track({ lat: coords.lat, lng: coords.lng, aura });
+    if (on && coords) announceRef.current();
   }, [on, coords, aura]);
 
   const ping = useCallback(
@@ -148,7 +161,6 @@ export function usePresence(
     return { blips: null, peerCount: 0, status: "demo", ping, incoming: null };
   }
 
-  // mask stale peers when the light is off instead of clearing state in an effect
   const activePeers = on ? peers : [];
   const me = coords;
   const blips: Blip[] = me

@@ -22,7 +22,7 @@ body {
 }
 
 /* incoming-ping bloom: an orb expands open, holds, and fades back out */
-@keyframes vortex-ping-orb {
+@keyframes ping-orb {
   0% {
     transform: scale(0.2);
     opacity: 0;
@@ -40,7 +40,7 @@ body {
     opacity: 0;
   }
 }
-@keyframes vortex-ping-text {
+@keyframes ping-text {
   0%,
   10% {
     transform: translateY(10px);
@@ -56,14 +56,14 @@ body {
     opacity: 0;
   }
 }
-.vortex-ping-orb {
-  animation: vortex-ping-orb 3.2s ease-out forwards;
+.ping-orb {
+  animation: ping-orb 3.2s ease-out forwards;
 }
-.vortex-ping-text {
-  animation: vortex-ping-text 3.2s ease-out forwards;
+.ping-text {
+  animation: ping-text 3.2s ease-out forwards;
 }
 @media (prefers-reduced-motion: reduce) {
-  @keyframes vortex-ping-orb {
+  @keyframes ping-orb {
     0%,
     100% {
       transform: scale(1);
@@ -74,7 +74,7 @@ body {
       opacity: 0.9;
     }
   }
-  .vortex-ping-text {
-    animation-name: vortex-ping-text;
+  .ping-text {
+    animation-name: ping-text;
   }
 }

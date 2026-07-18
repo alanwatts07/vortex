@@ -8,13 +8,13 @@ type Props = {
 };
 
 /** The one control that matters: flip your light on or off. */
-export default function VortexSwitch({ on, onChange, color }: Props) {
+export default function LightSwitch({ on, onChange, color }: Props) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
-      aria-label="Toggle your presence in the vortex"
+      aria-label="Toggle your light"
       onClick={() => onChange(!on)}
       className={[
         "group relative flex h-16 w-32 items-center rounded-full border px-1.5 transition-all duration-300",

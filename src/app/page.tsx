@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Radar, { type Blip } from "@/components/Radar";
-import VortexSwitch from "@/components/VortexSwitch";
+import LightSwitch from "@/components/LightSwitch";
 import AuraField from "@/components/AuraField";
 import IntroSplash from "@/components/IntroSplash";
 import { usePresence } from "@/hooks/usePresence";
@@ -18,8 +18,8 @@ import {
 
 type GeoState = "idle" | "asking" | "granted" | "denied" | "unsupported";
 
-const AURA_KEY = "vortex.aura";
-const INTRO_KEY = "vortex.seenIntro";
+const AURA_KEY = "findingus.aura";
+const INTRO_KEY = "findingus.seenIntro";
 
 // Deterministic drifting blips for demo mode — a spread of aura colors.
 function makeBlips(n: number): Blip[] {
@@ -247,12 +247,12 @@ export default function Home() {
         >
           <div className="relative flex items-center justify-center">
             <div
-              className="vortex-ping-orb h-72 w-72 rounded-full"
+              className="ping-orb h-72 w-72 rounded-full"
               style={{
                 background: `radial-gradient(circle, rgb(${incomingAura}), rgba(${incomingAura},0.25) 52%, rgba(${incomingAura},0) 72%)`,
               }}
             />
-            <div className="vortex-ping-text absolute px-6 text-center">
+            <div className="ping-text absolute px-6 text-center">
               <p className="text-xs uppercase tracking-[0.3em] text-white/75">
                 someone sees you
               </p>
@@ -281,11 +281,11 @@ export default function Home() {
               opacity: on ? 1 : 0.5,
             }}
           />
-          <h1 className="text-lg font-semibold tracking-tight">vortex</h1>
+          <h1 className="text-lg font-semibold tracking-tight">Finding Us</h1>
           <button
             type="button"
             onClick={() => setReopenIntro(true)}
-            aria-label="How vortex works"
+            aria-label="How Finding Us works"
             className="ml-1 flex h-5 w-5 items-center justify-center rounded-full border border-white/15 text-[11px] text-emerald-100/50 transition-colors hover:border-white/35 hover:text-emerald-100/80"
           >
             ?
@@ -385,7 +385,7 @@ export default function Home() {
           </div>
         )}
 
-        <VortexSwitch on={on} onChange={toggle} color={accent} />
+        <LightSwitch on={on} onChange={toggle} color={accent} />
 
         <p className="h-4 text-xs text-emerald-100/30">
           {on ? "Tap again to go dark" : "No profile. No history. Just presence."}

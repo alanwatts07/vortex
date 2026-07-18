@@ -23,7 +23,7 @@ const POINTS: { color: string; title: string; body: string }[] = [
 ];
 
 /**
- * First-run splash: what vortex is, why it exists, and how people find each
+ * First-run splash: what Finding Us is, why it exists, and how people find each
  * other. Deliberately short — it's a doorway, not a manual.
  */
 export default function IntroSplash({ onDone }: Props) {
@@ -33,7 +33,7 @@ export default function IntroSplash({ onDone }: Props) {
         <div className="mb-8 text-center">
           <div className="mb-3 flex items-center justify-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_14px_3px_rgba(52,211,153,0.9)]" />
-            <h1 className="text-2xl font-semibold tracking-tight">vortex</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Finding Us</h1>
           </div>
           <p className="text-sm text-emerald-100/55">
             A quiet signal that you&rsquo;re open to connect — right here, right

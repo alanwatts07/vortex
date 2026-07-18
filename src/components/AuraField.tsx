@@ -241,7 +241,7 @@ export default function AuraField({ onDone }: Props) {
     <div className="fixed inset-0 z-50 flex flex-col bg-[#050a07]">
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-center gap-1 px-6 pt-10 text-center">
         <p className="text-xs uppercase tracking-[0.25em] text-emerald-100/40">
-          vortex
+          Finding Us
         </p>
         <p className="text-lg font-medium text-emerald-50/90">
           Choose your energy
@@ -267,7 +267,7 @@ export default function AuraField({ onDone }: Props) {
                 boxShadow: `0 0 44px -4px rgba(${chosen.rgb},0.85)`,
               }}
             >
-              Enter the vortex
+              Start finding
             </button>
             <button
               type="button"

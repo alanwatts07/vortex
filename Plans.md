@@ -24,6 +24,44 @@ other **in person, by color** — no pinging, no texting, no profiles, no accoun
 
 ---
 
+## The finding ritual — eye contact *is* the connection
+
+The heart of Finding Us: the app doesn't *make* the connection, it choreographs
+the moment two people **look up, find each other, and lock eyes**. Holding that
+gaze is the mutual acknowledgment — you both just *know*. Everything else in the
+product is scaffolding for that one moment.
+
+- The app's only job: get you to **look up**, knowing roughly where to look
+  (color + direction) — then get out of the way.
+- The real connection happens **off-screen, in the shared gaze.** That's the
+  product.
+
+**Hard constraint:** the app can't — and must never — *watch* your eyes. No
+camera, no gaze tracking; that would destroy the whole no-surveillance ethos. So
+"holding eye contact" needs an in-app *proxy* that mirrors the real act without
+spying on it.
+
+**Proposed mechanic — "hold to lock":** once you've spotted each other, each
+person **presses and holds** on the other's dot (mirroring a sustained gaze).
+When *both* are holding at the same time, it **locks** — both screens bloom, buzz
+in sync, and a thread connects your two colors. Then the app goes quiet: you've
+found each other, go be present.
+
+Why it fits: it's **two-sided and sustained**, like eye contact itself. It can't
+be done alone or faked, and the deliberate effort *is* the consent and the
+acknowledgment. The natural flow: *ping → "lock eyes 👀" → both look up → both
+hold → lock.*
+
+Open questions to decide when we build it:
+- **Entry point:** does "hold to lock" only follow a ping, or can anyone start a
+  hold on any dot?
+- **Hold duration:** long enough to be deliberate, short enough to not feel
+  awkward while you're already looking at each other (~1.5–2.5s).
+- **After the lock:** celebrate, then fade — and maybe briefly brighten both
+  beacons so you can close the last few feet in a crowd.
+
+---
+
 ## Strategy — the cold-start problem & event mode
 
 **The existential risk.** A presence app is worthless until enough people are on

@@ -239,24 +239,34 @@ export default function Home() {
         }}
       />
 
-      {/* someone pinged you */}
+      {/* someone pinged you — an orb blooms open, then fades */}
       {incomingAura && (
         <div
-          className="fixed left-1/2 top-6 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border px-4 py-2 text-sm"
-          style={{
-            borderColor: `rgba(${incomingAura},0.5)`,
-            background: `rgba(${incomingAura},0.15)`,
-            boxShadow: `0 0 30px -6px rgba(${incomingAura},0.8)`,
-          }}
+          key={incoming?.n}
+          className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center"
         >
-          <span
-            className="h-3 w-3 rounded-full"
-            style={{
-              background: `rgb(${incomingAura})`,
-              boxShadow: `0 0 12px 2px rgba(${incomingAura},0.9)`,
-            }}
-          />
-          someone&rsquo;s reaching out — look around 👀
+          <div className="relative flex items-center justify-center">
+            <div
+              className="vortex-ping-orb h-72 w-72 rounded-full"
+              style={{
+                background: `radial-gradient(circle, rgb(${incomingAura}), rgba(${incomingAura},0.25) 52%, rgba(${incomingAura},0) 72%)`,
+              }}
+            />
+            <div className="vortex-ping-text absolute px-6 text-center">
+              <p className="text-xs uppercase tracking-[0.3em] text-white/75">
+                someone sees you
+              </p>
+              <p
+                className="mt-1 text-4xl font-semibold"
+                style={{
+                  color: `rgb(${incomingAura})`,
+                  textShadow: `0 0 26px rgba(${incomingAura},0.85)`,
+                }}
+              >
+                lock eyes 👀
+              </p>
+            </div>
+          </div>
         </div>
       )}
 

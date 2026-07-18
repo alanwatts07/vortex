@@ -38,6 +38,7 @@ export function usePresence(
   link: Link | null;
   confirmLock: () => void;
   declineLock: () => void;
+  takenColors: string[];
 } {
   const [peers, setPeers] = useState<Peer[]>([]);
   const [status, setStatus] = useState("idle");
@@ -79,6 +80,7 @@ export function usePresence(
   const resolvedRef = useRef<Set<string>>(new Set());
   const linkRef = useRef<Link | null>(null);
   const doneRef = useRef(false);
+  const onRef = useRef(on);
 
   useEffect(() => {
     stateRef.current = { coords, aura };
@@ -175,9 +177,8 @@ export function usePresence(
     }
   }, [link, resolve]);
 
-  // reconnect when returning to the page
+  // reconnect when returning to the page (even off, to refresh taken colors)
   useEffect(() => {
-    if (!on) return;
     const kick = () => {
       if (typeof document === "undefined" || document.visibilityState === "visible") {
         setEpoch((e) => e + 1);
@@ -191,10 +192,12 @@ export function usePresence(
       window.removeEventListener("online", kick);
       window.removeEventListener("focus", kick);
     };
-  }, [on]);
+  }, []);
 
+  // subscribe whenever configured — we LISTEN even when off (to learn which
+  // colors are taken); we only broadcast ourselves once the light is on.
   useEffect(() => {
-    if (!isPresenceConfigured || !supabase || !on) return;
+    if (!isPresenceConfigured || !supabase) return;
     const client = supabase;
     const channel = client.channel(CHANNEL, {
       config: { broadcast: { self: false } },
@@ -249,11 +252,11 @@ export function usePresence(
       })
       .subscribe((st) => {
         setStatus(st);
-        if (st === "SUBSCRIBED") announce();
+        if (st === "SUBSCRIBED" && onRef.current) announce();
       });
 
     const hb = setInterval(() => {
-      announce();
+      if (onRef.current) announce();
       const now = Date.now();
       let changed = false;
       for (const [id, p] of peersRef.current) {
@@ -267,15 +270,27 @@ export function usePresence(
 
     return () => {
       clearInterval(hb);
-      channel.send({ type: "broadcast", event: "bye", payload: { id: selfId } });
+      if (onRef.current) {
+        channel.send({ type: "broadcast", event: "bye", payload: { id: selfId } });
+      }
       announceRef.current = () => {};
       client.removeChannel(channel);
     };
-  }, [on, selfId, epoch, matchIfMutual, resolve]);
+  }, [selfId, epoch, matchIfMutual, resolve]);
 
+  // announce on turning on / say bye on turning off (or coords/aura change)
   useEffect(() => {
-    if (on && coords) announceRef.current();
-  }, [on, coords, aura]);
+    onRef.current = on;
+    if (!isPresenceConfigured || !supabase) return;
+    if (on && coords) {
+      announceRef.current();
+    } else if (!on) {
+      const ch = supabase.getChannels().find((c) => c.topic.endsWith(CHANNEL));
+      ch?.send({ type: "broadcast", event: "bye", payload: { id: selfId } });
+    }
+  }, [on, coords, aura, selfId]);
+
+  const takenColors = Array.from(new Set(peers.map((p) => p.aura)));
 
   if (!isPresenceConfigured) {
     return {
@@ -287,6 +302,7 @@ export function usePresence(
       link: null,
       confirmLock,
       declineLock,
+      takenColors: [],
     };
   }
 
@@ -312,5 +328,6 @@ export function usePresence(
     link,
     confirmLock,
     declineLock,
+    takenColors,
   };
 }

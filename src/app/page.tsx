@@ -8,6 +8,7 @@ import IntroSplash from "@/components/IntroSplash";
 import LockPrompt from "@/components/LockPrompt";
 import { usePresence } from "@/hooks/usePresence";
 import { isPresenceConfigured } from "@/lib/supabase";
+import { unlockAudio, blipSound, pingSound } from "@/lib/sound";
 import type { Coords } from "@/lib/geo";
 import {
   AURA_COLORS,
@@ -76,6 +77,7 @@ export default function Home() {
     link,
     confirmLock,
     declineLock,
+    takenColors,
   } = usePresence(on, coords, aura ?? DEFAULT_AURA);
 
   // once a mutual lock is in progress, clear the ping cards
@@ -87,7 +89,10 @@ export default function Home() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [link]);
 
-  const blips = realBlips ?? (on ? demoBlips : []);
+  const blips = useMemo(
+    () => realBlips ?? (on ? demoBlips : []),
+    [realBlips, on, demoBlips],
+  );
   const nearbyCount = realBlips ? peerCount : on ? demoBlips.length : 0;
 
   // load saved aura + intro flag once, after hydration (mount-time read is intentional)
@@ -176,6 +181,7 @@ export default function Home() {
   };
 
   const toggle = (next: boolean) => {
+    unlockAudio(); // enable sound on this user gesture
     if (next) {
       setElapsed(0);
       startWatch();
@@ -184,6 +190,18 @@ export default function Home() {
     }
     setOn(next);
   };
+
+  // soft radar blip when a new light appears
+  const seenBlipIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ids = new Set(
+      blips.map((b) => b.id).filter((x): x is string => Boolean(x)),
+    );
+    let fresh = false;
+    for (const id of ids) if (!seenBlipIds.current.has(id)) fresh = true;
+    seenBlipIds.current = ids;
+    if (fresh && on) blipSound();
+  }, [blips, on]);
 
   // someone pinged you → buzz + flash a toast in their color
   useEffect(() => {
@@ -195,6 +213,7 @@ export default function Home() {
     setIncomingCard({ from: incoming.from, rgb }); // persistent, tappable card
     setReachedBack(false);
     /* eslint-enable react-hooks/set-state-in-effect */
+    pingSound();
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate([60, 40, 60]);
     }
@@ -263,7 +282,12 @@ export default function Home() {
     return <IntroSplash onDone={dismissIntro} />;
   }
   if (aura === null || editingAura) {
-    return <AuraField onDone={saveIdentity} />;
+    return (
+      <AuraField
+        onDone={saveIdentity}
+        taken={takenColors.filter((c) => c !== aura)}
+      />
+    );
   }
 
   return (

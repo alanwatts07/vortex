@@ -25,11 +25,12 @@ function hslToRgb(h: number, s: number, l: number): string {
   return `${to(r)}, ${to(g)}, ${to(b)}`;
 }
 
-const HUE_STEP = 20; // 18 colors evenly spaced around the wheel
+const HUE_STEP = 12; // 30 colors evenly spaced around the wheel
 
 /**
  * The aura palette: many distinct colors spanning the full spectrum. Identity
  * is purely color now — every dot is an orb, so the hue is what you recognize.
+ * Colors are unique per live person; a bigger palette means fewer clashes.
  */
 export const AURA_COLORS: AuraColor[] = Array.from(
   { length: 360 / HUE_STEP },
@@ -41,7 +42,7 @@ export const AURA_COLORS: AuraColor[] = Array.from(
 
 const BY_ID = new Map(AURA_COLORS.map((c) => [c.id, c]));
 
-export const DEFAULT_AURA: AuraId = "h160";
+export const DEFAULT_AURA: AuraId = "h156";
 
 export function auraRgb(id: AuraId | null | undefined): string {
   const found = id ? BY_ID.get(id) : undefined;

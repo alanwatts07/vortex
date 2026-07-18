@@ -5,6 +5,8 @@ import { AURA_COLORS, type AuraId } from "@/lib/aura";
 
 type Props = {
   onDone: (aura: { color: AuraId }) => void;
+  /** colors already in use by others — excluded from the field */
+  taken?: string[];
 };
 
 type Orb = {
@@ -23,10 +25,13 @@ type Orb = {
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 
-function makeField(w: number, h: number): Orb[] {
+function makeField(w: number, h: number, taken: string[]): Orb[] {
   const base = Math.max(15, Math.min(30, Math.min(w, h) * 0.05));
-  // one orb per color, shuffled so the spectrum isn't laid out in a rainbow line
-  const colors = [...AURA_COLORS].sort(() => Math.random() - 0.5);
+  // one orb per available color, shuffled (drop colors others are already using)
+  const avail = AURA_COLORS.filter((c) => !taken.includes(c.id));
+  const colors = [...(avail.length ? avail : AURA_COLORS)].sort(
+    () => Math.random() - 0.5,
+  );
   return colors.map((c) => {
     const r = base * (0.75 + Math.random() * 0.55);
     const m = r * 2;
@@ -88,11 +93,15 @@ function paintOrb(
  * A drifting field of colored energy orbs. Tap the one you're drawn to and it
  * swells to the center — that color becomes your aura. No labels, no names.
  */
-export default function AuraField({ onDone }: Props) {
+export default function AuraField({ onDone, taken = [] }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const orbsRef = useRef<Orb[]>([]);
   const selectedRef = useRef<number | null>(null);
   const progressRef = useRef(0);
+  const takenRef = useRef<string[]>(taken);
+  useEffect(() => {
+    takenRef.current = taken;
+  }, [taken]);
   const [chosen, setChosen] = useState<{ color: AuraId; rgb: string } | null>(
     null,
   );
@@ -118,7 +127,7 @@ export default function AuraField({ onDone }: Props) {
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (orbsRef.current.length === 0) orbsRef.current = makeField(w, h);
+      if (orbsRef.current.length === 0) orbsRef.current = makeField(w, h, takenRef.current);
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -191,7 +200,7 @@ export default function AuraField({ onDone }: Props) {
     if (stirNonce === 0) return;
     const canvas = canvasRef.current;
     if (canvas) {
-      orbsRef.current = makeField(canvas.clientWidth, canvas.clientHeight);
+      orbsRef.current = makeField(canvas.clientWidth, canvas.clientHeight, takenRef.current);
     }
   }, [stirNonce]);
 

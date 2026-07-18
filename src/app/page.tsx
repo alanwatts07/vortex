@@ -347,12 +347,7 @@ export default function Home() {
               <span className="text-emerald-100/25">•</span>
               <span>{geoLabel}</span>
             </div>
-          ) : (
-            <span className="text-emerald-100/35">
-              Your light is off. Turn it on when you&rsquo;re open to meeting
-              someone.
-            </span>
-          )}
+          ) : null}
         </div>
 
         {picked && pickedFeet !== null && (

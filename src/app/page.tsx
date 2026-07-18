@@ -292,8 +292,7 @@ export default function Home() {
           </button>
         </div>
         <p className="max-w-xs text-sm text-emerald-100/50">
-          Flip your light on to appear on the radar. A quiet signal that
-          you&rsquo;re open to connect — right here, right now.
+          Turn your light on when you&rsquo;re open. Then look up.
         </p>
 
         <button
@@ -350,7 +349,8 @@ export default function Home() {
             </div>
           ) : (
             <span className="text-emerald-100/35">
-              You&rsquo;re invisible. Flip on when you&rsquo;re open.
+              Your light is off. Turn it on when you&rsquo;re open to meeting
+              someone.
             </span>
           )}
         </div>
@@ -380,7 +380,7 @@ export default function Home() {
               className="rounded-full px-4 py-1.5 text-sm font-medium text-black transition-transform active:scale-95"
               style={{ background: `rgb(${picked.color})` }}
             >
-              {pingSent ? "pinged ✓" : "Ping"}
+              {pingSent ? "sent ✓" : "Reach out"}
             </button>
           </div>
         )}
@@ -388,7 +388,9 @@ export default function Home() {
         <LightSwitch on={on} onChange={toggle} color={accent} />
 
         <p className="h-4 text-xs text-emerald-100/30">
-          {on ? "Tap again to go dark" : "No profile. No history. Just presence."}
+          {on
+            ? "Your light is on. Now look up. 👀"
+            : "No profile. No history. Just presence."}
         </p>
       </footer>
 

@@ -7,18 +7,18 @@ type Props = {
 const POINTS: { color: string; title: string; body: string }[] = [
   {
     color: "52, 211, 153",
-    title: "Flip your light on",
-    body: "When you're open to meet, turn on. You become a glowing dot on the radar. Off, and you vanish — no trace.",
+    title: "Turn your light on",
+    body: "When you're open to meeting someone, turn on. You become a light nearby. Off, and you fade — no trace.",
   },
   {
     color: "56, 189, 248",
-    title: "Read the room by color",
-    body: "Everyone open within ~200 feet appears as a dot. Its color is their aura — the mood they're in. Yours is your color too.",
+    title: "Look up",
+    body: "See who else is here and open right now — each a different color.",
   },
   {
     color: "192, 132, 252",
-    title: "Find them by their color",
-    body: "No pinging, no texting. The radar points you toward a color — you walk over and just ask, “are you purple?” The color is how you recognize each other.",
+    title: "Meet in person",
+    body: "Spot each other by color, put your phones down, and talk. The app ends where connection begins.",
   },
 ];
 
@@ -36,8 +36,7 @@ export default function IntroSplash({ onDone }: Props) {
             <h1 className="text-2xl font-semibold tracking-tight">Finding Us</h1>
           </div>
           <p className="text-sm text-emerald-100/55">
-            A quiet signal that you&rsquo;re open to connect — right here, right
-            now. Not a dating app. Not a profile. Just presence.
+            Human beings were never meant to walk past one another.
           </p>
         </div>
 
@@ -67,7 +66,7 @@ export default function IntroSplash({ onDone }: Props) {
           onClick={onDone}
           className="mt-8 w-full rounded-full bg-emerald-400 px-6 py-4 text-base font-medium text-emerald-950 shadow-[0_0_40px_-4px_rgba(52,211,153,0.8)] transition-transform active:scale-[0.99]"
         >
-          Choose your energy →
+          Choose your color →
         </button>
         <p className="mt-4 text-center text-xs text-emerald-100/30">
           Your location is only ever shared while your light is on.

@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Finding Us — signal you're open",
+  title: "Finding Us — look up",
   description:
-    "Tune your aura, flip your light on, and become a colored dot on the radar. A quiet signal that you're open to connect — right here, right now.",
+    "Human beings were never meant to walk past one another. Turn your light on, look up, and meet someone who's here and open — then put your phones down and talk.",
 };
 
 export const viewport: Viewport = {

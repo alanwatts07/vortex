@@ -244,7 +244,7 @@ export default function AuraField({ onDone }: Props) {
           Finding Us
         </p>
         <p className="text-lg font-medium text-emerald-50/90">
-          Choose your energy
+          Choose your color
         </p>
       </div>
 

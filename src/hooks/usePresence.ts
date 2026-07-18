@@ -7,9 +7,11 @@ import { auraRgb, type AuraId } from "@/lib/aura";
 import type { Blip } from "@/components/Radar";
 
 const CHANNEL = "finding-us-lobby";
-const RANGE_METERS = 61; // ~200 ft
+const RANGE_METERS = 20_000_000; // TEMP: effectively unlimited for testing (~half the globe)
 const HEARTBEAT_MS = 3000;
 const STALE_MS = 9000;
+const ID_KEY = "findingus.id";
+const RESOLVED_KEY = "findingus.resolved";
 
 type Peer = { id: string; lat: number; lng: number; aura: AuraId; seen: number };
 
@@ -42,10 +44,32 @@ export function usePresence(
   const [epoch, setEpoch] = useState(0);
   const [incoming, setIncoming] = useState<IncomingPing | null>(null);
   const [link, setLink] = useState<Link | null>(null);
-  const [resolvedIds, setResolvedIds] = useState<string[]>([]);
-  const [selfId] = useState(() =>
-    typeof crypto !== "undefined" ? crypto.randomUUID() : "anon",
-  );
+  // removed peers persist across refreshes (reset only on clear-site-data)
+  const [resolvedIds, setResolvedIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const v = JSON.parse(localStorage.getItem(RESOLVED_KEY) || "[]");
+      return Array.isArray(v) ? v : [];
+    } catch {
+      return [];
+    }
+  });
+  // a stable, anonymous per-device id (also survives refresh, resets on wipe)
+  const [selfId] = useState(() => {
+    if (typeof window === "undefined" || typeof crypto === "undefined") {
+      return "anon";
+    }
+    try {
+      let id = localStorage.getItem(ID_KEY);
+      if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem(ID_KEY, id);
+      }
+      return id;
+    } catch {
+      return crypto.randomUUID();
+    }
+  });
 
   const stateRef = useRef<{ coords: Coords | null; aura: AuraId }>({ coords, aura });
   const peersRef = useRef<Map<string, Peer>>(new Map());
@@ -62,6 +86,15 @@ export function usePresence(
   useEffect(() => {
     linkRef.current = link;
   }, [link]);
+  // keep the resolved-set ref + storage in sync with the resolved ids
+  useEffect(() => {
+    resolvedRef.current = new Set(resolvedIds);
+    try {
+      localStorage.setItem(RESOLVED_KEY, JSON.stringify(resolvedIds));
+    } catch {
+      // ignore storage errors
+    }
+  }, [resolvedIds]);
 
   const send = useCallback(
     (event: string, to: string) => {

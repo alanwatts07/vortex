@@ -28,14 +28,16 @@ type RadarProps = {
   onPickBlip?: (blip: Blip | null) => void;
 };
 
-// eye + iris geometry, relative to the canvas box (which is wider than tall)
+// eye + iris geometry, relative to the canvas box (which is wider than tall).
+// Blips sit on an ellipse matching the eye so none get clipped or lost.
 const geo = (w: number, h: number) => {
-  const irisR = Math.min(w * 0.34, h * 0.46);
+  const irisR = Math.min(w * 0.28, h * 0.4);
   return {
     cx: w / 2,
     cy: h / 2,
     irisR,
-    blipR: irisR * 0.94,
+    blipRX: w * 0.42,
+    blipRY: irisR * 0.62,
     eyeHalfW: w * 0.48,
     eyeMaxHalfH: h * 0.47,
   };
@@ -97,7 +99,7 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
 
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
-      const { cx, cy, irisR, blipR, eyeHalfW, eyeMaxHalfH } = geo(w, h);
+      const { cx, cy, irisR, blipRX, blipRY, eyeHalfW, eyeMaxHalfH } = geo(w, h);
 
       const target = isLive ? 1 : 0.16;
       open += (target - open) * Math.min(1, dt * 7);
@@ -186,7 +188,36 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
         ctx.stroke();
       }
 
-      // other people
+      // YOU — a compact bright light at the center, drawn UNDER the blips so
+      // other people always sit on top and never get washed out
+      ctx.beginPath();
+      ctx.arc(cx, cy, irisR * 0.22, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(4, 8, 6, ${0.4 * lid})`;
+      ctx.fill();
+
+      const pulse = isLive ? 0.6 + 0.4 * Math.sin(now / 480) : 0.4;
+      const glowR = irisR * 0.32 * lid;
+      const yg = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+      yg.addColorStop(0, `rgba(${rgb}, ${0.95 * pulse * lid})`);
+      yg.addColorStop(0.55, `rgba(${rgb}, ${0.3 * lid})`);
+      yg.addColorStop(1, `rgba(${rgb}, 0)`);
+      ctx.beginPath();
+      ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+      ctx.fillStyle = yg;
+      ctx.fill();
+
+      const coreR = Math.max(3.5, irisR * 0.09) * lid;
+      ctx.beginPath();
+      ctx.arc(cx, cy, coreR + 1.5, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${rgb}, ${lid})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * lid})`;
+      ctx.fill();
+
+      // other people — bright dots on the eye's ellipse, always visible on top
       for (const b of blipsRef.current) {
         const color = b.color ?? rgb;
         if (isLive) {
@@ -199,54 +230,26 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
         g = Math.max(0, g - dt * 0.7);
         glow.set(b, g);
 
-        const bx = cx + Math.cos(b.angle) * b.dist * blipR;
-        const by = cy + Math.sin(b.angle) * b.dist * blipR;
-        const a = isLive ? 0.5 + g * 0.5 : 0.15;
-        const rad = 4 + g * 4;
+        const bx = cx + Math.cos(b.angle) * b.dist * blipRX;
+        const by = cy + Math.sin(b.angle) * b.dist * blipRY;
+        const rad = 5 + g * 4;
 
-        if (g > 0.01 && isLive) {
-          const halo = ctx.createRadialGradient(bx, by, 0, bx, by, 18);
-          halo.addColorStop(0, `rgba(${color}, ${0.5 * g})`);
-          halo.addColorStop(1, `rgba(${color}, 0)`);
-          ctx.beginPath();
-          ctx.arc(bx, by, 18, 0, Math.PI * 2);
-          ctx.fillStyle = halo;
-          ctx.fill();
-        }
+        const halo = ctx.createRadialGradient(bx, by, 0, bx, by, rad * 3.2);
+        halo.addColorStop(
+          0,
+          `rgba(${color}, ${(0.34 + g * 0.4) * (isLive ? 1 : 0.4)})`,
+        );
+        halo.addColorStop(1, `rgba(${color}, 0)`);
+        ctx.beginPath();
+        ctx.arc(bx, by, rad * 3.2, 0, Math.PI * 2);
+        ctx.fillStyle = halo;
+        ctx.fill();
+
         ctx.beginPath();
         ctx.arc(bx, by, rad, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${color}, ${a})`;
+        ctx.fillStyle = `rgba(${color}, ${isLive ? 0.7 + g * 0.3 : 0.25})`;
         ctx.fill();
       }
-
-      // faint dark pupil well, so the eye still reads
-      ctx.beginPath();
-      ctx.arc(cx, cy, irisR * 0.3, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(4, 8, 6, ${0.45 * lid})`;
-      ctx.fill();
-
-      // YOU — a bright light at the center
-      const pulse = isLive ? 0.6 + 0.4 * Math.sin(now / 480) : 0.4;
-      const glowR = irisR * 0.5 * lid;
-      const yg = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
-      yg.addColorStop(0, `rgba(${rgb}, ${0.95 * pulse * lid})`);
-      yg.addColorStop(0.5, `rgba(${rgb}, ${0.35 * lid})`);
-      yg.addColorStop(1, `rgba(${rgb}, 0)`);
-      ctx.beginPath();
-      ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
-      ctx.fillStyle = yg;
-      ctx.fill();
-
-      const coreR = Math.max(4, irisR * 0.11) * lid;
-      ctx.beginPath();
-      ctx.arc(cx, cy, coreR + 2, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(${rgb}, ${lid})`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * lid})`;
-      ctx.fill();
 
       ctx.restore();
 
@@ -276,13 +279,16 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
     const rect = canvas.getBoundingClientRect();
     const px = e.clientX - rect.left;
     const py = e.clientY - rect.top;
-    const { cx, cy, blipR } = geo(canvas.clientWidth, canvas.clientHeight);
+    const { cx, cy, blipRX, blipRY } = geo(
+      canvas.clientWidth,
+      canvas.clientHeight,
+    );
     let hit: Blip | null = null;
     let best = Infinity;
     for (const b of blipsRef.current) {
       if (!b.id) continue;
-      const bx = cx + Math.cos(b.angle) * b.dist * blipR;
-      const by = cy + Math.sin(b.angle) * b.dist * blipR;
+      const bx = cx + Math.cos(b.angle) * b.dist * blipRX;
+      const by = cy + Math.sin(b.angle) * b.dist * blipRY;
       const d = Math.hypot(px - bx, py - by);
       if (d < 28 && d < best) {
         best = d;

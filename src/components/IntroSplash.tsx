@@ -22,19 +22,13 @@ export default function IntroSplash({ onDone }: Props) {
           Human beings were never meant to walk past one another.
         </p>
 
-        <div className="flex flex-col gap-2 text-xl font-medium text-emerald-100/90">
-          <span>Turn your light on.</span>
-          <span>Look up.</span>
-          <span>Lock eyes — and hold.</span>
-        </div>
-
         <div className="w-full">
           <button
             type="button"
             onClick={onDone}
             className="w-full rounded-full bg-emerald-400 px-6 py-4 text-base font-medium text-emerald-950 shadow-[0_0_40px_-4px_rgba(52,211,153,0.8)] transition-transform active:scale-[0.99]"
           >
-            Choose your color →
+            choose your light →
           </button>
           <p className="mt-4 text-xs text-emerald-100/30">
             Your location is only ever shared while your light is on.

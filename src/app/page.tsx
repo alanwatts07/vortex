@@ -344,8 +344,8 @@ export default function Home() {
       </header>
 
       {/* radar */}
-      <div className="relative flex w-full max-w-md flex-1 items-center justify-center py-2">
-        <div className="relative aspect-[3/2] w-full">
+      <div className="relative flex w-full max-w-lg flex-1 items-center justify-center py-2">
+        <div className="relative aspect-[4/3] w-full">
           <Radar
             live={on}
             blips={blips}

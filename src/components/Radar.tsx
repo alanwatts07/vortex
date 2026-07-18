@@ -31,15 +31,15 @@ type RadarProps = {
 // eye + iris geometry, relative to the canvas box (which is wider than tall).
 // Blips sit on an ellipse matching the eye so none get clipped or lost.
 const geo = (w: number, h: number) => {
-  const irisR = Math.min(w * 0.3, h * 0.42);
+  const irisR = Math.min(w * 0.33, h * 0.38);
   return {
     cx: w / 2,
     cy: h / 2,
     irisR,
-    blipRX: w * 0.42,
-    blipRY: irisR * 0.74,
-    eyeHalfW: w * 0.46,
-    eyeMaxHalfH: h * 0.49,
+    blipRX: w * 0.44,
+    blipRY: irisR * 0.82,
+    eyeHalfW: w * 0.48,
+    eyeMaxHalfH: h * 0.78,
   };
 };
 
@@ -212,8 +212,10 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
 
       // YOU — a compact bright light at the center, drawn UNDER the blips so
       // other people always sit on top and never get washed out
+      // markers (you + blips) keep a constant screen size — divide by zoom so
+      // they don't balloon when you pinch in; only their positions spread out
       const pulse = isLive ? 0.6 + 0.4 * Math.sin(now / 480) : 0.4;
-      const glowR = irisR * 0.2 * lid;
+      const glowR = (irisR * 0.2 * lid) / zoom;
       const yg = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
       yg.addColorStop(0, `rgba(${rgb}, ${0.95 * pulse * lid})`);
       yg.addColorStop(0.55, `rgba(${rgb}, ${0.3 * lid})`);
@@ -223,7 +225,7 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
       ctx.fillStyle = yg;
       ctx.fill();
 
-      const coreR = Math.max(2.5, irisR * 0.05) * lid;
+      const coreR = (Math.max(2.5, irisR * 0.05) * lid) / zoom;
       ctx.beginPath();
       ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * lid})`;
@@ -244,7 +246,7 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
 
         const bx = cx + Math.cos(b.angle) * b.dist * blipRX;
         const by = cy + Math.sin(b.angle) * b.dist * blipRY;
-        const rad = 5 + g * 4;
+        const rad = (5 + g * 4) / zoom;
 
         const halo = ctx.createRadialGradient(bx, by, 0, bx, by, rad * 3.2);
         halo.addColorStop(

@@ -8,19 +8,21 @@ import type { Blip } from "@/components/Radar";
 
 const CHANNEL = "finding-us-lobby";
 const RANGE_METERS = 61; // ~200 ft
-const HEARTBEAT_MS = 3000; // re-announce yourself this often
-const STALE_MS = 9000; // drop a peer we haven't heard from in this long
+const HEARTBEAT_MS = 3000;
+const STALE_MS = 9000;
 
 type Peer = { id: string; lat: number; lng: number; aura: AuraId; seen: number };
 
 export type IncomingPing = { n: number; aura: AuraId; from: string };
+/** An active mutual connection: matched → confirming → done. */
+export type Link = {
+  peerId: string;
+  aura: AuraId;
+  mine: boolean; // I've confirmed the lock
+  theirs: boolean; // they've confirmed
+  done: boolean; // both confirmed → celebrate then remove
+};
 
-/**
- * Real-time presence over Supabase *broadcast* (not presence.track, which
- * accumulates metas and drops rapid updates). Each device announces
- * {id, coords, aura} on change + on a heartbeat; peers are pruned when they go
- * quiet. Also carries lightweight pings. `blips` is null in demo mode.
- */
 export function usePresence(
   on: boolean,
   coords: Coords | null,
@@ -31,11 +33,16 @@ export function usePresence(
   status: string;
   ping: (peerId: string) => void;
   incoming: IncomingPing | null;
+  link: Link | null;
+  confirmLock: () => void;
+  declineLock: () => void;
 } {
   const [peers, setPeers] = useState<Peer[]>([]);
   const [status, setStatus] = useState("idle");
   const [epoch, setEpoch] = useState(0);
   const [incoming, setIncoming] = useState<IncomingPing | null>(null);
+  const [link, setLink] = useState<Link | null>(null);
+  const [resolvedIds, setResolvedIds] = useState<string[]>([]);
   const [selfId] = useState(() =>
     typeof crypto !== "undefined" ? crypto.randomUUID() : "anon",
   );
@@ -43,20 +50,96 @@ export function usePresence(
   const stateRef = useRef<{ coords: Coords | null; aura: AuraId }>({ coords, aura });
   const peersRef = useRef<Map<string, Peer>>(new Map());
   const announceRef = useRef<() => void>(() => {});
+  const iPingedRef = useRef<Set<string>>(new Set());
+  const theyPingedRef = useRef<Map<string, AuraId>>(new Map());
+  const resolvedRef = useRef<Set<string>>(new Set());
+  const linkRef = useRef<Link | null>(null);
 
   useEffect(() => {
     stateRef.current = { coords, aura };
   }, [coords, aura]);
+  useEffect(() => {
+    linkRef.current = link;
+  }, [link]);
 
-  // phones freeze the tab + drop the socket when backgrounded/locked; force a
-  // fresh re-subscribe whenever we come back to the page or the network returns
+  const send = useCallback(
+    (event: string, to: string) => {
+      const ch = supabase
+        ?.getChannels()
+        .find((c) => c.topic.endsWith(CHANNEL));
+      ch?.send({
+        type: "broadcast",
+        event,
+        payload: { to, from: selfId, fromAura: stateRef.current.aura },
+      });
+    },
+    [selfId],
+  );
+
+  // one connection at a time is removed for good once resolved
+  const resolve = useCallback((peerId: string) => {
+    resolvedRef.current.add(peerId);
+    iPingedRef.current.delete(peerId);
+    theyPingedRef.current.delete(peerId);
+    peersRef.current.delete(peerId);
+    setResolvedIds((prev) => (prev.includes(peerId) ? prev : [...prev, peerId]));
+    setPeers(Array.from(peersRef.current.values()));
+    setLink((l) => (l && l.peerId === peerId ? null : l));
+    setIncoming((i) => (i && i.from === peerId ? null : i));
+  }, []);
+
+  const matchIfMutual = useCallback((peerId: string) => {
+    if (resolvedRef.current.has(peerId)) return;
+    if (iPingedRef.current.has(peerId) && theyPingedRef.current.has(peerId)) {
+      const a = theyPingedRef.current.get(peerId)!;
+      setLink((prev) =>
+        prev && prev.peerId === peerId
+          ? prev
+          : { peerId, aura: a, mine: false, theirs: false, done: false },
+      );
+    }
+  }, []);
+
+  // reach out / reach back
+  const ping = useCallback(
+    (peerId: string) => {
+      if (resolvedRef.current.has(peerId)) return;
+      iPingedRef.current.add(peerId);
+      send("ping", peerId);
+      matchIfMutual(peerId);
+    },
+    [send, matchIfMutual],
+  );
+
+  const confirmLock = useCallback(() => {
+    const l = linkRef.current;
+    if (!l) return;
+    send("confirm", l.peerId);
+    setLink((prev) => (prev ? { ...prev, mine: true } : prev));
+  }, [send]);
+
+  const declineLock = useCallback(() => {
+    const l = linkRef.current;
+    if (!l) return;
+    send("decline", l.peerId);
+    resolve(l.peerId);
+  }, [send, resolve]);
+
+  // both confirmed → celebrate briefly, then remove each other for good
+  useEffect(() => {
+    if (!link || !link.mine || !link.theirs || link.done) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLink((l) => (l ? { ...l, done: true } : l));
+    const pid = link.peerId;
+    const t = setTimeout(() => resolve(pid), 2600);
+    return () => clearTimeout(t);
+  }, [link, resolve]);
+
+  // reconnect when returning to the page
   useEffect(() => {
     if (!on) return;
     const kick = () => {
-      if (
-        typeof document === "undefined" ||
-        document.visibilityState === "visible"
-      ) {
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
         setEpoch((e) => e + 1);
       }
     };
@@ -70,7 +153,6 @@ export function usePresence(
     };
   }, [on]);
 
-  // join the channel; broadcast presence + prune stale peers
   useEffect(() => {
     if (!isPresenceConfigured || !supabase || !on) return;
     const client = supabase;
@@ -79,7 +161,6 @@ export function usePresence(
     });
 
     const commit = () => setPeers(Array.from(peersRef.current.values()));
-
     const announce = () => {
       const { coords: c, aura: a } = stateRef.current;
       if (!c) return;
@@ -94,6 +175,7 @@ export function usePresence(
     channel
       .on("broadcast", { event: "here" }, ({ payload }) => {
         if (!payload || payload.id === selfId) return;
+        if (resolvedRef.current.has(payload.id)) return;
         peersRef.current.set(payload.id, {
           id: payload.id,
           lat: payload.lat,
@@ -107,20 +189,29 @@ export function usePresence(
         if (payload?.id && peersRef.current.delete(payload.id)) commit();
       })
       .on("broadcast", { event: "ping" }, ({ payload }) => {
-        if (payload?.to === selfId) {
-          setIncoming((prev) => ({
-            n: (prev?.n ?? 0) + 1,
-            aura: payload.fromAura,
-            from: payload.from,
-          }));
-        }
+        if (payload?.to !== selfId || resolvedRef.current.has(payload.from)) return;
+        theyPingedRef.current.set(payload.from, payload.fromAura);
+        setIncoming((prev) => ({
+          n: (prev?.n ?? 0) + 1,
+          aura: payload.fromAura,
+          from: payload.from,
+        }));
+        matchIfMutual(payload.from);
+      })
+      .on("broadcast", { event: "confirm" }, ({ payload }) => {
+        if (payload?.to !== selfId) return;
+        setLink((prev) =>
+          prev && prev.peerId === payload.from ? { ...prev, theirs: true } : prev,
+        );
+      })
+      .on("broadcast", { event: "decline" }, ({ payload }) => {
+        if (payload?.to === selfId) resolve(payload.from);
       })
       .subscribe((st) => {
         setStatus(st);
         if (st === "SUBSCRIBED") announce();
       });
 
-    // heartbeat: re-announce + drop peers we haven't heard from
     const hb = setInterval(() => {
       announce();
       const now = Date.now();
@@ -140,48 +231,46 @@ export function usePresence(
       announceRef.current = () => {};
       client.removeChannel(channel);
     };
-  }, [on, selfId, epoch]);
+  }, [on, selfId, epoch, matchIfMutual, resolve]);
 
-  // announce immediately when your coords or aura change
   useEffect(() => {
     if (on && coords) announceRef.current();
   }, [on, coords, aura]);
 
-  const ping = useCallback(
-    (peerId: string) => {
-      const channel = supabase
-        ?.getChannels()
-        .find((c) => c.topic.endsWith(CHANNEL));
-      channel?.send({
-        type: "broadcast",
-        event: "ping",
-        payload: { to: peerId, from: selfId, fromAura: stateRef.current.aura },
-      });
-    },
-    [selfId],
-  );
-
   if (!isPresenceConfigured) {
-    return { blips: null, peerCount: 0, status: "demo", ping, incoming: null };
+    return {
+      blips: null,
+      peerCount: 0,
+      status: "demo",
+      ping,
+      incoming: null,
+      link: null,
+      confirmLock,
+      declineLock,
+    };
   }
 
-  const activePeers = on ? peers : [];
+  const activePeers = on
+    ? peers.filter((p) => !resolvedIds.includes(p.id))
+    : [];
   const me = coords;
   const blips: Blip[] = me
     ? activePeers.flatMap((p) => {
         const b = toRadarBlip(me, p, RANGE_METERS);
         return b
-          ? [
-              {
-                ...b,
-                color: auraRgb(p.aura),
-                id: p.id,
-                distM: distanceMeters(me, p),
-              },
-            ]
+          ? [{ ...b, color: auraRgb(p.aura), id: p.id, distM: distanceMeters(me, p) }]
           : [];
       })
     : [];
 
-  return { blips, peerCount: activePeers.length, status, ping, incoming };
+  return {
+    blips,
+    peerCount: activePeers.length,
+    status,
+    ping,
+    incoming,
+    link,
+    confirmLock,
+    declineLock,
+  };
 }

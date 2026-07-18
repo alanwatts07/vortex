@@ -5,6 +5,7 @@ import Radar, { type Blip } from "@/components/Radar";
 import LightSwitch from "@/components/LightSwitch";
 import AuraField from "@/components/AuraField";
 import IntroSplash from "@/components/IntroSplash";
+import LockPrompt from "@/components/LockPrompt";
 import { usePresence } from "@/hooks/usePresence";
 import { isPresenceConfigured } from "@/lib/supabase";
 import type { Coords } from "@/lib/geo";
@@ -66,11 +67,25 @@ export default function Home() {
   const [reachedBack, setReachedBack] = useState(false);
   const accent = auraRgb(aura);
   const demoBlips = useMemo(() => makeBlips(7), []);
-  const { blips: realBlips, peerCount, status, ping, incoming } = usePresence(
-    on,
-    coords,
-    aura ?? DEFAULT_AURA,
-  );
+  const {
+    blips: realBlips,
+    peerCount,
+    status,
+    ping,
+    incoming,
+    link,
+    confirmLock,
+    declineLock,
+  } = usePresence(on, coords, aura ?? DEFAULT_AURA);
+
+  // once a mutual lock is in progress, clear the ping cards
+  useEffect(() => {
+    if (!link) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setIncomingCard(null);
+    setPicked(null);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [link]);
 
   const blips = realBlips ?? (on ? demoBlips : []);
   const nearbyCount = realBlips ? peerCount : on ? demoBlips.length : 0;
@@ -376,7 +391,15 @@ export default function Home() {
           ) : null}
         </div>
 
-        {picked && pickedDist !== null && (
+        {link && (
+          <LockPrompt
+            link={link}
+            onConfirm={confirmLock}
+            onDecline={declineLock}
+          />
+        )}
+
+        {!link && picked && pickedDist !== null && (
           <div
             className="flex items-center gap-3 rounded-2xl border px-4 py-3"
             style={{
@@ -404,7 +427,7 @@ export default function Home() {
           </div>
         )}
 
-        {incomingCard && (
+        {!link && incomingCard && (
           <div
             className="flex items-center gap-3 rounded-2xl border px-4 py-3"
             style={{

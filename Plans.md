@@ -52,13 +52,26 @@ be done alone or faked, and the deliberate effort *is* the consent and the
 acknowledgment. The natural flow: *ping → "lock eyes 👀" → both look up → both
 hold → lock.*
 
-Open questions to decide when we build it:
-- **Entry point:** does "hold to lock" only follow a ping, or can anyone start a
-  hold on any dot?
-- **Hold duration:** long enough to be deliberate, short enough to not feel
-  awkward while you're already looking at each other (~1.5–2.5s).
-- **After the lock:** celebrate, then fade — and maybe briefly brighten both
-  beacons so you can close the last few feet in a crowd.
+### The ritual we're building (v1)
+
+1. **Reach out** — tap someone's dot → "Reach out" (a ping).
+2. **Reach back** — they get it and tap "Reach back". Now it's mutual.
+3. **Eyes met?** — both screens show a **hold-to-confirm** prompt (hold, don't
+   tap, so there are no accidental confirmations). You look up, lock eyes for
+   real, then hold to confirm.
+4. **Both confirm** → a brief "you found each other" moment → **you drop off each
+   other's radar.** One connection, made. The rest is real life.
+5. **Decline / no response** → it quietly dissolves — and you *still* drop off
+   each other's radar.
+
+**One chance per person, per outing.** Any resolution (confirmed or declined)
+removes the pairing from both radars, so nobody can re-ping, hover, or stalk —
+and anyone who isn't feeling it gets a silent, no-explanation-owed out. New
+outing, fresh radar (it's all ephemeral anyway).
+
+Decided: **strict removal** (no grace period) for v1 — the scarcity is the
+magic; add a short "stay visible 60s to close the gap" grace only if testing
+shows people losing each other before they meet.
 
 ---
 

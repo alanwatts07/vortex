@@ -61,6 +61,8 @@ export function usePresence(
 
     channel
       .on("presence", { event: "sync" }, sync)
+      .on("presence", { event: "join" }, sync)
+      .on("presence", { event: "leave" }, sync)
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           trackedRef.current = true;

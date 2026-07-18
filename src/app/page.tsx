@@ -123,13 +123,20 @@ export default function Home() {
       return;
     }
     setGeo("asking");
+    const onPos = (pos: GeolocationPosition) => {
+      setGeo("granted");
+      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    };
+    // network-based location: fast and reliable indoors (a bar), where
+    // high-accuracy GPS often stalls. ~city-block precision is plenty at 200 ft.
+    const opts = { enableHighAccuracy: false, timeout: 20000, maximumAge: 30000 };
+    // seed an immediate fix so the radar can place people right away…
+    navigator.geolocation.getCurrentPosition(onPos, () => {}, opts);
+    // …then keep it fresh as you move around the room.
     watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        setGeo("granted");
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      },
+      onPos,
       () => setGeo("denied"),
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 },
+      opts,
     );
   };
 

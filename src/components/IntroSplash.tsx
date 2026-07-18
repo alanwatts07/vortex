@@ -28,11 +28,6 @@ export default function IntroSplash({ onDone }: Props) {
           <span>Lock eyes — and hold.</span>
         </div>
 
-        <p className="max-w-xs text-sm leading-relaxed text-emerald-100/55">
-          You&rsquo;ll catch someone&rsquo;s eyes. Most look away — the one who
-          holds your gaze has just found you.
-        </p>
-
         <div className="w-full">
           <button
             type="button"

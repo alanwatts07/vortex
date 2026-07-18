@@ -55,9 +55,10 @@ export default function Home() {
   const startedAt = useRef<number | null>(null);
   const watchId = useRef<number | null>(null);
 
+  const [debug, setDebug] = useState(false);
   const accent = auraRgb(aura);
   const demoBlips = useMemo(() => makeBlips(7), []);
-  const { blips: realBlips, peerCount } = usePresence(
+  const { blips: realBlips, peerCount, status } = usePresence(
     on,
     coords,
     aura ?? DEFAULT_AURA,
@@ -79,6 +80,9 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isAuraId(savedAura)) setAura(savedAura);
     if (intro === "1") setSeenIntro(true);
+    if (typeof window !== "undefined" && window.location.search.includes("debug")) {
+      setDebug(true);
+    }
     setReady(true);
   }, []);
 
@@ -281,6 +285,22 @@ export default function Home() {
           {on ? "Tap again to go dark" : "No profile. No history. Just presence."}
         </p>
       </footer>
+
+      {debug && (
+        <div className="pointer-events-none fixed bottom-1 left-1 z-50 rounded bg-black/70 px-2 py-1 font-[family-name:var(--font-geist-mono)] text-[10px] leading-tight text-emerald-300/90">
+          <div>on:{String(on)} geo:{geo} status:{status}</div>
+          <div>
+            coords:
+            {coords
+              ? `${coords.lat.toFixed(5)},${coords.lng.toFixed(5)}`
+              : "null"}
+          </div>
+          <div>
+            peers:{peerCount} blips:{blips.length} cfg:
+            {String(isPresenceConfigured)}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

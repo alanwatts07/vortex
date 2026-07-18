@@ -21,8 +21,10 @@ export function usePresence(
   on: boolean,
   coords: Coords | null,
   aura: AuraId,
-): { blips: Blip[] | null; peerCount: number } {
+): { blips: Blip[] | null; peerCount: number; status: string } {
   const [peers, setPeers] = useState<PresenceMeta[]>([]);
+  const [status, setStatus] = useState("idle");
+  const [epoch, setEpoch] = useState(0);
   const [selfId] = useState(() =>
     typeof crypto !== "undefined" ? crypto.randomUUID() : "anon",
   );
@@ -37,7 +39,26 @@ export function usePresence(
     stateRef.current = { coords, aura };
   }, [coords, aura]);
 
-  // join / leave the channel with the light
+  // phones freeze the tab + drop the socket when backgrounded/locked; force a
+  // fresh re-subscribe whenever we come back to the page or the network returns
+  useEffect(() => {
+    if (!on) return;
+    const kick = () => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
+        setEpoch((e) => e + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", kick);
+    window.addEventListener("online", kick);
+    window.addEventListener("focus", kick);
+    return () => {
+      document.removeEventListener("visibilitychange", kick);
+      window.removeEventListener("online", kick);
+      window.removeEventListener("focus", kick);
+    };
+  }, [on]);
+
+  // join / leave the channel with the light (re-runs on reconnect via epoch)
   useEffect(() => {
     if (!isPresenceConfigured || !supabase || !on) return;
     const client = supabase;
@@ -63,8 +84,9 @@ export function usePresence(
       .on("presence", { event: "sync" }, sync)
       .on("presence", { event: "join" }, sync)
       .on("presence", { event: "leave" }, sync)
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
+      .subscribe(async (st) => {
+        setStatus(st);
+        if (st === "SUBSCRIBED") {
           trackedRef.current = true;
           const { coords: c, aura: a } = stateRef.current;
           if (c) await channel.track({ lat: c.lat, lng: c.lng, aura: a });
@@ -75,7 +97,7 @@ export function usePresence(
       trackedRef.current = false;
       client.removeChannel(channel);
     };
-  }, [on, selfId]);
+  }, [on, selfId, epoch]);
 
   // push new coordinates / aura as they change
   useEffect(() => {
@@ -88,7 +110,7 @@ export function usePresence(
   }, [on, coords, aura]);
 
   if (!isPresenceConfigured) {
-    return { blips: null, peerCount: 0 };
+    return { blips: null, peerCount: 0, status: "demo" };
   }
 
   // mask stale peers when the light is off instead of clearing state in an effect
@@ -101,5 +123,5 @@ export function usePresence(
       })
     : [];
 
-  return { blips, peerCount: activePeers.length };
+  return { blips, peerCount: activePeers.length, status };
 }

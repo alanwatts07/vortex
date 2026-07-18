@@ -31,15 +31,15 @@ type RadarProps = {
 // eye + iris geometry, relative to the canvas box (which is wider than tall).
 // Blips sit on an ellipse matching the eye so none get clipped or lost.
 const geo = (w: number, h: number) => {
-  const irisR = Math.min(w * 0.28, h * 0.4);
+  const irisR = Math.min(w * 0.3, h * 0.42);
   return {
     cx: w / 2,
     cy: h / 2,
     irisR,
     blipRX: w * 0.42,
-    blipRY: irisR * 0.62,
-    eyeHalfW: w * 0.48,
-    eyeMaxHalfH: h * 0.47,
+    blipRY: irisR * 0.74,
+    eyeHalfW: w * 0.46,
+    eyeMaxHalfH: h * 0.49,
   };
 };
 
@@ -53,6 +53,20 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
   const blipsRef = useRef<Blip[]>(blips);
   const liveRef = useRef(live);
   const accentRef = useRef(accent);
+
+  // pinch-zoom / pan state
+  const zoomRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const gestureRef = useRef({
+    moved: false,
+    downX: 0,
+    downY: 0,
+    pinchDist: 0,
+    midX: 0,
+    midY: 0,
+    lastTap: 0,
+  });
 
   useEffect(() => {
     blipsRef.current = blips;
@@ -140,6 +154,14 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
       eyePath();
       ctx.clip();
 
+      // pinch-zoom / pan the eye's contents (the frame stays put)
+      ctx.save();
+      const zoom = zoomRef.current;
+      const pan = panRef.current;
+      ctx.translate(cx + pan.x, cy + pan.y);
+      ctx.scale(zoom, zoom);
+      ctx.translate(-cx, -cy);
+
       const base = ctx.createRadialGradient(cx, cy, irisR * 0.2, cx, cy, irisR);
       base.addColorStop(0, `rgba(${rgb}, ${0.16 * alpha})`);
       base.addColorStop(1, `rgba(${rgb}, 0)`);
@@ -190,13 +212,8 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
 
       // YOU — a compact bright light at the center, drawn UNDER the blips so
       // other people always sit on top and never get washed out
-      ctx.beginPath();
-      ctx.arc(cx, cy, irisR * 0.22, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(4, 8, 6, ${0.4 * lid})`;
-      ctx.fill();
-
       const pulse = isLive ? 0.6 + 0.4 * Math.sin(now / 480) : 0.4;
-      const glowR = irisR * 0.32 * lid;
+      const glowR = irisR * 0.2 * lid;
       const yg = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
       yg.addColorStop(0, `rgba(${rgb}, ${0.95 * pulse * lid})`);
       yg.addColorStop(0.55, `rgba(${rgb}, ${0.3 * lid})`);
@@ -206,12 +223,7 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
       ctx.fillStyle = yg;
       ctx.fill();
 
-      const coreR = Math.max(3.5, irisR * 0.09) * lid;
-      ctx.beginPath();
-      ctx.arc(cx, cy, coreR + 1.5, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(${rgb}, ${lid})`;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      const coreR = Math.max(2.5, irisR * 0.05) * lid;
       ctx.beginPath();
       ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * lid})`;
@@ -251,7 +263,8 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
         ctx.fill();
       }
 
-      ctx.restore();
+      ctx.restore(); // end zoom transform
+      ctx.restore(); // end clip
 
       // --- eyelid rim ---
       eyePath();
@@ -272,25 +285,44 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
     };
   }, []);
 
-  const handlePick = (e: React.PointerEvent<HTMLCanvasElement>) => {
+  const clampView = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const z = zoomRef.current;
+    if (z <= 1.01) {
+      zoomRef.current = 1;
+      panRef.current = { x: 0, y: 0 };
+      return;
+    }
+    const maxX = (z - 1) * canvas.clientWidth * 0.5;
+    const maxY = (z - 1) * canvas.clientHeight * 0.5;
+    panRef.current.x = Math.max(-maxX, Math.min(maxX, panRef.current.x));
+    panRef.current.y = Math.max(-maxY, Math.min(maxY, panRef.current.y));
+  };
+
+  const pickAt = (clientX: number, clientY: number) => {
     if (!onPickBlip) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
+    const px = clientX - rect.left;
+    const py = clientY - rect.top;
     const { cx, cy, blipRX, blipRY } = geo(
       canvas.clientWidth,
       canvas.clientHeight,
     );
+    // invert the zoom/pan transform to reach world coordinates
+    const z = zoomRef.current;
+    const wx = cx + (px - cx - panRef.current.x) / z;
+    const wy = cy + (py - cy - panRef.current.y) / z;
     let hit: Blip | null = null;
     let best = Infinity;
     for (const b of blipsRef.current) {
       if (!b.id) continue;
       const bx = cx + Math.cos(b.angle) * b.dist * blipRX;
       const by = cy + Math.sin(b.angle) * b.dist * blipRY;
-      const d = Math.hypot(px - bx, py - by);
-      if (d < 28 && d < best) {
+      const d = Math.hypot(wx - bx, wy - by);
+      if (d < 28 / z && d < best) {
         best = d;
         hit = b;
       }
@@ -298,12 +330,84 @@ export default function Radar({ live, blips, accent, onPickBlip }: RadarProps) {
     onPickBlip(hit);
   };
 
+  const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    canvas?.setPointerCapture?.(e.pointerId);
+    const pts = pointersRef.current;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const g = gestureRef.current;
+    if (pts.size === 1) {
+      g.moved = false;
+      g.downX = e.clientX;
+      g.downY = e.clientY;
+    } else if (pts.size === 2) {
+      const [a, b] = [...pts.values()];
+      g.pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+      g.midX = (a.x + b.x) / 2;
+      g.midY = (a.y + b.y) / 2;
+    }
+  };
+
+  const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const pts = pointersRef.current;
+    const prev = pts.get(e.pointerId);
+    if (!prev) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const g = gestureRef.current;
+    if (pts.size >= 2) {
+      const [a, b] = [...pts.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const midX = (a.x + b.x) / 2;
+      const midY = (a.y + b.y) / 2;
+      if (g.pinchDist > 0) {
+        zoomRef.current = Math.max(
+          1,
+          Math.min(4.5, zoomRef.current * (dist / g.pinchDist)),
+        );
+      }
+      panRef.current.x += midX - g.midX;
+      panRef.current.y += midY - g.midY;
+      g.pinchDist = dist;
+      g.midX = midX;
+      g.midY = midY;
+      g.moved = true;
+      clampView();
+    } else {
+      if (Math.hypot(e.clientX - g.downX, e.clientY - g.downY) > 6) g.moved = true;
+      if (zoomRef.current > 1.01) {
+        panRef.current.x += e.clientX - prev.x;
+        panRef.current.y += e.clientY - prev.y;
+        clampView();
+      }
+    }
+  };
+
+  const onUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const pts = pointersRef.current;
+    const had = pts.delete(e.pointerId);
+    const g = gestureRef.current;
+    if (had && pts.size === 0 && !g.moved) {
+      if (e.timeStamp - g.lastTap < 300) {
+        zoomRef.current = 1;
+        panRef.current = { x: 0, y: 0 };
+        g.lastTap = 0;
+      } else {
+        g.lastTap = e.timeStamp;
+        pickAt(g.downX, g.downY);
+      }
+    }
+    if (pts.size < 2) g.pinchDist = 0;
+  };
+
   return (
     <canvas
       ref={canvasRef}
-      onPointerDown={onPickBlip ? handlePick : undefined}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
       className="block h-full w-full"
-      style={{ imageRendering: "auto", touchAction: "manipulation" }}
+      style={{ imageRendering: "auto", touchAction: "none" }}
       aria-hidden
     />
   );

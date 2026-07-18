@@ -137,7 +137,6 @@ export function usePresence(
     if (link.mine && link.theirs && !doneRef.current) {
       doneRef.current = true;
       const pid = link.peerId;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLink((l) => (l ? { ...l, done: true } : l));
       setTimeout(() => resolve(pid), 2600);
     }

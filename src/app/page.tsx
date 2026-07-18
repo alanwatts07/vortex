@@ -59,6 +59,11 @@ export default function Home() {
   const [picked, setPicked] = useState<Blip | null>(null);
   const [pingSent, setPingSent] = useState(false);
   const [incomingAura, setIncomingAura] = useState<string | null>(null);
+  const [incomingCard, setIncomingCard] = useState<{
+    from: string;
+    rgb: string;
+  } | null>(null);
+  const [reachedBack, setReachedBack] = useState(false);
   const accent = auraRgb(aura);
   const demoBlips = useMemo(() => makeBlips(7), []);
   const { blips: realBlips, peerCount, status, ping, incoming } = usePresence(
@@ -168,14 +173,22 @@ export default function Home() {
   // someone pinged you → buzz + flash a toast in their color
   useEffect(() => {
     if (!incoming) return;
+    const rgb = auraRgb(incoming.aura);
     // reacting to a websocket-driven ping is a genuine external event
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIncomingAura(auraRgb(incoming.aura));
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setIncomingAura(rgb); // brief full-screen bloom
+    setIncomingCard({ from: incoming.from, rgb }); // persistent, tappable card
+    setReachedBack(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate([60, 40, 60]);
     }
-    const t = setTimeout(() => setIncomingAura(null), 3500);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => setIncomingAura(null), 2000);
+    const t2 = setTimeout(() => setIncomingCard(null), 20000);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [incoming]);
 
   const sendPing = () => {
@@ -189,6 +202,16 @@ export default function Home() {
       setPingSent(false);
       setPicked(null);
     }, 1400);
+  };
+
+  const reachBack = () => {
+    if (!incomingCard) return;
+    ping(incomingCard.from);
+    setReachedBack(true);
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(30);
+    }
+    setTimeout(() => setIncomingCard(null), 1600);
   };
 
   const pickedDist =
@@ -377,6 +400,35 @@ export default function Home() {
               style={{ background: `rgb(${picked.color})` }}
             >
               {pingSent ? "sent ✓" : "Reach out"}
+            </button>
+          </div>
+        )}
+
+        {incomingCard && (
+          <div
+            className="flex items-center gap-3 rounded-2xl border px-4 py-3"
+            style={{
+              borderColor: `rgba(${incomingCard.rgb},0.5)`,
+              background: `rgba(${incomingCard.rgb},0.1)`,
+              boxShadow: `0 0 24px -8px rgba(${incomingCard.rgb},0.8)`,
+            }}
+          >
+            <span
+              className="h-3 w-3 shrink-0 rounded-full"
+              style={{
+                background: `rgb(${incomingCard.rgb})`,
+                boxShadow: `0 0 12px 2px rgba(${incomingCard.rgb},0.9)`,
+              }}
+            />
+            <span className="text-sm text-emerald-50/80">someone reached out</span>
+            <button
+              type="button"
+              onClick={reachBack}
+              disabled={reachedBack}
+              className="rounded-full px-4 py-1.5 text-sm font-medium text-black transition-transform active:scale-95"
+              style={{ background: `rgb(${incomingCard.rgb})` }}
+            >
+              {reachedBack ? "sent ✓" : "Reach back"}
             </button>
           </div>
         )}

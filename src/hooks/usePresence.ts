@@ -13,7 +13,7 @@ const STALE_MS = 9000; // drop a peer we haven't heard from in this long
 
 type Peer = { id: string; lat: number; lng: number; aura: AuraId; seen: number };
 
-export type IncomingPing = { n: number; aura: AuraId };
+export type IncomingPing = { n: number; aura: AuraId; from: string };
 
 /**
  * Real-time presence over Supabase *broadcast* (not presence.track, which
@@ -108,7 +108,11 @@ export function usePresence(
       })
       .on("broadcast", { event: "ping" }, ({ payload }) => {
         if (payload?.to === selfId) {
-          setIncoming((prev) => ({ n: (prev?.n ?? 0) + 1, aura: payload.fromAura }));
+          setIncoming((prev) => ({
+            n: (prev?.n ?? 0) + 1,
+            aura: payload.fromAura,
+            from: payload.from,
+          }));
         }
       })
       .subscribe((st) => {

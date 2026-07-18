@@ -29,10 +29,9 @@ export default function IntroSplash({ onDone }: Props) {
         </div>
 
         <p className="max-w-xs text-sm leading-relaxed text-emerald-100/55">
-          Let it linger a beat too long — you&rsquo;re the two who came looking.
+          You&rsquo;ll catch someone&rsquo;s eyes. Most look away — the one who
+          holds your gaze is looking for you too.
         </p>
-
-        <p className="text-sm italic text-emerald-100/40">The rest is yours.</p>
 
         <div className="w-full">
           <button

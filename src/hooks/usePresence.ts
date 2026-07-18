@@ -54,6 +54,7 @@ export function usePresence(
   const theyPingedRef = useRef<Map<string, AuraId>>(new Map());
   const resolvedRef = useRef<Set<string>>(new Set());
   const linkRef = useRef<Link | null>(null);
+  const doneRef = useRef(false);
 
   useEffect(() => {
     stateRef.current = { coords, aura };
@@ -125,14 +126,21 @@ export function usePresence(
     resolve(l.peerId);
   }, [send, resolve]);
 
-  // both confirmed → celebrate briefly, then remove each other for good
+  // both confirmed → celebrate briefly, then remove each other for good.
+  // A ref guard schedules the removal exactly once (no cleanup, so setting
+  // done:true can't cancel its own timer).
   useEffect(() => {
-    if (!link || !link.mine || !link.theirs || link.done) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLink((l) => (l ? { ...l, done: true } : l));
-    const pid = link.peerId;
-    const t = setTimeout(() => resolve(pid), 2600);
-    return () => clearTimeout(t);
+    if (!link) {
+      doneRef.current = false;
+      return;
+    }
+    if (link.mine && link.theirs && !doneRef.current) {
+      doneRef.current = true;
+      const pid = link.peerId;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLink((l) => (l ? { ...l, done: true } : l));
+      setTimeout(() => resolve(pid), 2600);
+    }
   }, [link, resolve]);
 
   // reconnect when returning to the page

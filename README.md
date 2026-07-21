@@ -1,9 +1,9 @@
-# vortex 🌀
+# Finding Us 🌀
 
 A location-based **presence** app. Flip your light on to become a colored dot on
 a radar — a quiet signal that you're open to connect **right here, right now**.
-The color is your **aura**; the shape is yours to pick. You find each other
-**in person, by color** — *"are you the purple triangle?"*
+The color is your **aura** — chosen from a drifting field of colors. You find
+each other **in person, by color** — *"are you the teal one?"*
 
 **Not a dating app. Not a profile app.** No bios, no swiping, no in-app chat, no
 accounts. Just presence, and then you actually meet.
@@ -35,26 +35,29 @@ No pinging, no texting, no thread to hide behind. The color *is* the intro.
 
 ## What's built
 
-- **Intro splash** (`src/components/IntroSplash.tsx`) — first-run explainer:
-  what it is, why, and how you find each other by color.
-- **Aura picker** (`src/components/AuraPicker.tsx`) — pick a **color** (one of 7
-  chakra hues) and a **shape** (circle, ring, triangle, diamond, square, star).
-  No quiz, no questions — just choose how you show up. Saved to local storage.
-- **Radar** (`src/components/Radar.tsx`) — canvas radar with range rings, a
-  rotating sweep, and blips that flare in their own aura color + shape as the
-  beam passes. You sit at the glowing center. Includes an old-iOS Safari
-  fallback sweep.
-- **The switch** (`src/components/VortexSwitch.tsx`) — the one control, tinted
-  to your aura.
-- **Real presence** (`src/hooks/usePresence.ts`, `src/lib/geo.ts`) — when a
-  Supabase project is configured, your live GPS is broadcast over Supabase
-  Realtime Presence and everyone within **~200 ft** is projected onto your radar
-  (north = up), colored + shaped by their chosen aura. No database, no auth —
-  just the anon key.
-- **Identity model** (`src/lib/chakra.ts`) — the 7 chakra colors + dot shapes.
+- **Intro splash** (`src/components/IntroSplash.tsx`) — the manifesto: turn your
+  light on, look up, lock eyes.
+- **Color picker** (`src/components/AuraField.tsx`) — a drifting field of glowing
+  color orbs; tap the one you're drawn to. 30 colors plus the **void** (a black
+  core with a white halo). Colors are **unique per live person**.
+- **Eye radar** (`src/components/Radar.tsx`) — the radar rendered as a glowing
+  eye: your light is the pupil, the sweep scans, other lights are colored dots.
+  It opens when your light is on, blinks, and supports **pinch-to-zoom** for
+  precise selection.
+- **The light switch** (`src/components/LightSwitch.tsx`) — the one control,
+  tinted to your color.
+- **Real-time presence** (`src/hooks/usePresence.ts`, `src/lib/geo.ts`) — over
+  Supabase broadcast: your live GPS + color are announced to everyone nearby and
+  projected onto the radar. Listens even while your light is off (to know which
+  colors are already taken).
+- **The connection ritual** (`src/components/LockPrompt.tsx`) — reach out → they
+  reach back → both **hold to confirm** you locked eyes → "you found each other"
+  → you both drop off each other's radar (one chance; no re-pinging or stalking).
+- **Sounds** (`src/lib/sound.ts`) — a soft sonar blip for new lights, a chime
+  when someone reaches out.
+- **Color palette** (`src/lib/aura.ts`) — the 30-color spectrum + the void.
 
-Without Supabase env vars the app runs in **demo mode** (simulated colored/shaped
-dots) so it still feels alive locally.
+Without Supabase env vars the app runs in **demo mode** (simulated colored dots).
 
 ## Tech
 

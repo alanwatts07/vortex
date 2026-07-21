@@ -1,10 +1,10 @@
-# Vortex — Business Plan (working draft)
+# Finding Us — Business Plan (working draft)
 
 _Status: pre-seed / prototype. This is a living draft — numbers marked
 **[assumption]** or **[verify]** are placeholders to replace with real data
 before any investor conversation._
 
-> **Vortex** is a location-based *presence* app. Flip your light on to become a
+> **Finding Us** is a location-based *presence* app. Flip your light on to become a
 > colored dot on a radar — a quiet signal that you're open to connect, right
 > here, right now. You find each other in person, by color. Not a dating app,
 > not a profile app: no bios, no swiping, no chat. The color is the introduction.
@@ -78,7 +78,7 @@ sees an empty radar and leaves. So we never sell "an app" — we light up
    **acquisition and proof**.
    - _Known tradeoff:_ festivals are **seasonal and one-off**, so they drive
      spikes, not retention. We deliberately pair them with recurring formats
-     (karaoke → nightlife) so users have a reason to open vortex *between*
+     (karaoke → nightlife) so users have a reason to open Finding Us *between*
      festivals. Festivals fill the top of the funnel; recurring venues keep it.
 3. **Recurring nightlife: bars & events.** Same "host owns the room" playbook as
    karaoke, repeatable venue-by-venue. This is the retention and density engine.
@@ -96,7 +96,7 @@ brand lives offline. (Also a merch/partnership surface — see revenue.)
 ## 5. Business model (dual)
 
 **A. Venues & events pay (B2B) — primary near-term revenue.**
-- A festival, conference, bar, or venue pays to run a **branded vortex scene**
+- A festival, conference, bar, or venue pays to run a **branded scene**
   for their crowd (a private/space-scoped radar, their name/colors, join QR,
   host controls, and basic analytics on engagement).
 - Pricing shapes to explore: per-event fee for festivals/conferences
@@ -135,7 +135,7 @@ realistic conversion, deal sizes) — investors will push hard on this._
 ## 7. Competition & differentiation
 
 - **Dating apps (Tinder, Hinge, etc.):** romance-framed, profile/swipe-based,
-  on-screen. Vortex is explicitly *not* that — no profiles, no romance framing,
+  on-screen. Finding Us is explicitly *not* that — no profiles, no romance framing,
   meeting is in person. Different intent, different moment.
 - **Proximity/social apps (past attempts):** most failed on **cold-start**
   (empty radar) by launching globally. Our scene-scoped, host-led density model
@@ -154,7 +154,7 @@ realistic conversion, deal sizes) — investors will push hard on this._
 ## 8. Milestones & metrics
 
 **Phase 0 — Prove the loop (now → next few months).**
-- Run vortex live at karaoke nights repeatedly.
+- Run Finding Us live at karaoke nights repeatedly.
 - _Metric:_ % of a room that flips on when prompted; do strangers actually meet
   because of it? (qualitative + simple counts). This is the make-or-break signal.
 

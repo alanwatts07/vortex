@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { auraRgb } from "@/lib/aura";
 import type { Link } from "@/hooks/usePresence";
 
-const HOLD_MS = 1600;
+const HOLD_MS = 6000;
 
 type Props = {
   link: Link;

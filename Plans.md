@@ -1,4 +1,4 @@
-# Vortex — Plans
+# Finding Us — Plans
 
 A location-based **presence** app. Flip your light on to become a colored dot on
 a radar — a quiet signal that you're open to connect **right here, right now**.
@@ -83,7 +83,7 @@ mode is brutal: everyone opens it, sees an empty radar, and leaves. Density —
 not features — is what makes or breaks this. This kills more social apps than
 any bug.
 
-**The unlock: launch as *scenes*, not a global map.** A vortex scoped to a
+**The unlock: launch as *scenes*, not a global map.** A scene scoped to a
 specific place or event — a festival, a bar, a campus, a conference — joined via
 a shared code or QR. Everyone there lands on the same radar. Density is
 *manufactured* instead of hoped for. The open-ended global version comes later,
@@ -156,7 +156,7 @@ runs. It hands us, for free, everything cold-start usually costs a fortune:
   little brave and social, so "go find the purple triangle" fits right in.
 
 Ways to make it land at the night:
-- **QR to join the night's vortex** — on the karaoke screen between songs, on
+- **QR to join the night's scene** — on the karaoke screen between songs, on
   tables, on a flyer. One scan → you're on the radar.
 - **Host-driven "everyone on!" moment** — the mic triggers the mass flip-on.
 - **Color as the night's icebreaker** — "there's an orange star who wants to
@@ -169,7 +169,7 @@ Ways to make it land at the night:
 
 Nail one recurring night → you've got a **repeatable playbook**: take the same
 "host owns the room" motion to the next bar, the next event, the next scene.
-Adoption is **venue-by-venue and host-led**, not a global launch. Vortex goes
+Adoption is **venue-by-venue and host-led**, not a global launch. Finding Us goes
 from "someday, everyone" to "this Thursday, this room" — and that's a path you
 can actually walk.
 
@@ -302,8 +302,8 @@ The local-storage tension (raised by the team):
   - **Anonymous device key** — a random ID in local storage backs a tiny
     server-side record of energy. No login, no profile, but survives refresh.
     Lost if storage is cleared (acceptable, recoverable-by-nobody = private).
-  - **Optional "claim your vortex"** — a one-tap passkey/anonymous cloud sync
-    *only if* a user wants cross-device continuity. Off by default.
+  - **Optional cloud sync** — a one-tap passkey/anonymous sync *only if* a user
+    wants cross-device continuity. Off by default.
   - **Session-scoped only** — energy lives for one outing and resets; leans hard
     into "be here now."
 - Decision needed later: is progression **persistent** (needs a key) or
@@ -340,7 +340,7 @@ persistence decision.
       wave back, both dots brighten/beacon so you can find each other. Still no
       text — just mutual signal. (Keeps the "meet in person" rule.)
 - [ ] **Color-match nudges** — subtly highlight compatible/complementary auras.
-- [ ] **Ephemeral rooms / events** — a shared vortex scoped to a venue, festival,
+- [ ] **Ephemeral rooms / events** — a shared scene scoped to a venue, festival,
       campus, or a QR code, instead of pure GPS radius.
 - [ ] **"Beacon" mode** — briefly broadcast a stronger pulse so a specific person
       can spot you in a crowd.
@@ -351,8 +351,7 @@ persistence decision.
 
 ## Tech debt / hardening
 
-- [ ] Rename repo/package from `greenlight` → `vortex` (cosmetic; deploy alias
-      still works).
-- [ ] Presence reconnect handling (dropped socket, tab sleep/wake).
+- [x] Renamed package + repo to `finding-us` (Vercel deploy alias unchanged).
+- [x] Presence reconnect handling (dropped socket, tab sleep/wake).
 - [ ] Error boundary around the radar canvas.
 - [ ] Basic analytics that respect the no-tracking ethos (aggregate counts only).
